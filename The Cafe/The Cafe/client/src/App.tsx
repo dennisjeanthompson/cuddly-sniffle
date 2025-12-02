@@ -101,43 +101,39 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   }, [logoToUse]);
 
   return (
-    <div className="flex h-screen bg-background relative">
-      {/* Background with logo */}
-      <div style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        zIndex: -10,
-        backgroundColor: 'rgba(255, 255, 255, 0.95)', // Slightly off-white background
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        pointerEvents: 'none',
-      }}>
-        <img 
-          src={logoToUse}
-          alt="" 
-          style={{
-            maxWidth: '60%',
-            maxHeight: '60%',
-            objectFit: 'contain',
-            opacity: logoLoaded ? 0.15 : 0, // Subtle logo visibility
-            transition: 'opacity 0.5s ease-in-out',
-          }}
-          onError={() => {
-            if (logoToUse === logoPath) {
-              setLogoToUse(fallbackLogoPath);
-            }
-          }}
-        />
+    <div className="flex h-screen bg-gradient-to-br from-background via-background to-secondary/20 relative overflow-hidden">
+      {/* Modern Background Effects */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        {/* Subtle gradient orbs */}
+        <div className="absolute -top-40 -right-40 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 -left-40 w-80 h-80 bg-orange-500/5 rounded-full blur-3xl" />
+        <div className="absolute -bottom-40 right-1/4 w-96 h-96 bg-accent/5 rounded-full blur-3xl" />
+        
+        {/* Grid pattern overlay */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.01)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.01)_1px,transparent_1px)] bg-[size:40px_40px]" />
+        
+        {/* Logo watermark */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <img 
+            src={logoToUse}
+            alt="" 
+            className="max-w-[50%] max-h-[50%] object-contain transition-opacity duration-500"
+            style={{
+              opacity: logoLoaded ? 0.03 : 0,
+            }}
+            onError={() => {
+              if (logoToUse === logoPath) {
+                setLogoToUse(fallbackLogoPath);
+              }
+            }}
+          />
+        </div>
       </div>
       
       <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden relative">
+      <div className="flex-1 flex flex-col overflow-hidden relative z-10">
         <Header />
-        <main className="flex-1 overflow-y-auto bg-background/80">
+        <main className="flex-1 overflow-y-auto">
           {children}
         </main>
       </div>

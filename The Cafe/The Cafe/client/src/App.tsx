@@ -1,8 +1,11 @@
 import { Route, Switch, Redirect, useLocation } from "wouter";
+import ErrorBoundary from "@/components/layout/error-boundary";
 import { queryClient, apiRequest } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState, useCallback } from "react";
 import { getAuthState, setAuthState, subscribeToAuth } from "./lib/auth";
+import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 // Theme Providers
 import { ThemeProvider } from "@/components/theme-provider";
@@ -41,6 +44,7 @@ import MobileTimeOff from "@/pages/mobile-time-off";
 import MobileShiftTrading from "@/pages/mobile-shift-trading";
 import MobileProfile from "@/pages/mobile-profile";
 import MobileMore from "@/pages/mobile-more";
+import MobileClock from "@/pages/mobile-clock";
 
 // Detect if running on mobile server (port 5001)
 const isMobileServer = () => {
@@ -286,7 +290,12 @@ function DesktopRouter({ authState }: { authState: { isAuthenticated: boolean; u
       {/* Shift Trading - MUI */}
       <Route path="/shift-trading">
         <DesktopLayout>
-          <MuiShiftTrading />
+          {/** Wrap in ErrorBoundary to avoid blank screen on runtime error */}
+          {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
+          {/* @ts-ignore */}
+          <ErrorBoundary>
+            <MuiShiftTrading />
+          </ErrorBoundary>
         </DesktopLayout>
       </Route>
 
@@ -366,8 +375,18 @@ function MobileRouter({ authState }: { authState: { isAuthenticated: boolean; us
     return <MuiLogin />;
   }
 
-  // If manager/admin tries to access mobile, show access info
+  // Allow employees to access mobile portal
+  // Block manager/admin and show them a message to use desktop
   if (user?.role === "manager" || user?.role === "admin") {
+    const handleLogout = async () => {
+      try {
+        await apiRequest("POST", "/api/auth/logout");
+      } catch (e) {
+        // Ignore logout errors
+      }
+      setAuthState({ user: null, isAuthenticated: false });
+    };
+
     return (
       <Box
         sx={{
@@ -402,17 +421,25 @@ function MobileRouter({ authState }: { authState: { isAuthenticated: boolean; us
             You're logged in as a {user.role}. This mobile app is designed for employees. Please
             use the desktop portal for full management features.
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
             Desktop Portal:{" "}
             <Typography component="span" sx={{ fontFamily: "monospace", color: "primary.main" }}>
               port 5000
             </Typography>
           </Typography>
+          <Button
+            variant="outlined"
+            onClick={handleLogout}
+            sx={{ borderRadius: 2 }}
+          >
+            Logout & Switch Account
+          </Button>
         </Box>
       </Box>
     );
   }
 
+  // Employee role or any other role - allow access to mobile dashboard
   return (
     <Switch>
       {/* Mobile Dashboard */}
@@ -421,6 +448,14 @@ function MobileRouter({ authState }: { authState: { isAuthenticated: boolean; us
       </Route>
       <Route path="/mobile-dashboard">
         <MobileDashboard />
+      </Route>
+
+      {/* Mobile Clock */}
+      <Route path="/clock">
+        <MobileClock />
+      </Route>
+      <Route path="/mobile-clock">
+        <MobileClock />
       </Route>
 
       {/* Mobile Schedule */}
@@ -556,11 +591,14 @@ function App() {
     <ThemeProvider>
       <MuiThemeProvider>
         <QueryClientProvider client={queryClient}>
-          {isMobileServer() ? (
-            <MobileRouter authState={authState} />
-          ) : (
-            <DesktopRouter authState={authState} />
-          )}
+          <TooltipProvider>
+            <Toaster />
+            {isMobileServer() ? (
+              <MobileRouter authState={authState} />
+            ) : (
+              <DesktopRouter authState={authState} />
+            )}
+          </TooltipProvider>
         </QueryClientProvider>
       </MuiThemeProvider>
     </ThemeProvider>

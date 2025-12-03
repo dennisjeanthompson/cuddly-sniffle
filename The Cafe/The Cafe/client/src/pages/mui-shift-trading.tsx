@@ -228,7 +228,7 @@ export default function MuiShiftTrading() {
                 Shift Trade Request
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                {format(parseISO(trade.createdAt), "MMM d, yyyy 'at' h:mm a")}
+                {trade.createdAt ? format(parseISO(trade.createdAt), "MMM d, yyyy 'at' h:mm a") : 'N/A'}
               </Typography>
             </Box>
             {getStatusChip(trade.status)}
@@ -284,14 +284,13 @@ export default function MuiShiftTrading() {
                 <Stack direction="row" alignItems="center" spacing={1}>
                   <CalendarMonthIcon fontSize="small" color="action" />
                   <Typography variant="body2">
-                    {format(parseISO(trade.shift.date), "EEEE, MMM d, yyyy")}
+                    {trade.shift?.date ? format(parseISO(trade.shift.date), "EEEE, MMM d, yyyy") : 'N/A'}
                   </Typography>
                 </Stack>
                 <Stack direction="row" alignItems="center" spacing={1}>
                   <AccessTimeIcon fontSize="small" color="action" />
                   <Typography variant="body2">
-                    {format(parseISO(trade.shift.startTime), "h:mm a")} -{" "}
-                    {format(parseISO(trade.shift.endTime), "h:mm a")}
+                    {trade.shift?.startTime && trade.shift?.endTime ? `${format(parseISO(trade.shift.startTime), "h:mm a")} - ${format(parseISO(trade.shift.endTime), "h:mm a")}` : 'N/A'}
                   </Typography>
                 </Stack>
               </Stack>
@@ -604,8 +603,9 @@ export default function MuiShiftTrading() {
                 >
                   {myShifts.map((shift: any) => (
                     <MenuItem key={shift.id} value={shift.id}>
-                      {format(parseISO(shift.date), "MMM d")} - {format(parseISO(shift.startTime), "h:mm a")} to{" "}
-                      {format(parseISO(shift.endTime), "h:mm a")}
+                      {shift.date && shift.startTime && shift.endTime 
+                        ? `${format(parseISO(shift.date), "MMM d")} - ${format(parseISO(shift.startTime), "h:mm a")} to ${format(parseISO(shift.endTime), "h:mm a")}`
+                        : 'Invalid shift data'}
                     </MenuItem>
                   ))}
                 </Select>

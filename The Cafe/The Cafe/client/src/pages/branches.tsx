@@ -134,21 +134,34 @@ export default function Branches() {
   };
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-2xl font-bold text-foreground">Branches</h2>
-          <p className="text-muted-foreground">Manage café locations</p>
-        </div>
+    <div className="p-6 space-y-6 animate-fade-in">
+      {/* Hero Header */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500/10 via-primary/5 to-background border border-amber-500/20 p-6 lg:p-8">
+        {/* Background decoration */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-amber-500/20 to-transparent rounded-full -translate-y-32 translate-x-32 blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-primary/10 to-transparent rounded-full translate-y-24 -translate-x-24 blur-3xl" />
         
-        {isManagerRole && (
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button data-testid="button-add-branch">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Branch
-              </Button>
-            </DialogTrigger>
+        <div className="relative flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500/20 to-amber-500/5 flex items-center justify-center">
+              <Store className="h-7 w-7 text-amber-500" />
+            </div>
+            <div>
+              <h2 className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+                Branches
+              </h2>
+              <p className="text-muted-foreground">Manage your café locations and outlets</p>
+            </div>
+          </div>
+          
+          {isManagerRole && (
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="btn-premium text-primary-foreground" data-testid="button-add-branch">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Branch
+                </Button>
+              </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
               <form onSubmit={handleSubmit}>
                 <DialogHeader>
@@ -246,54 +259,55 @@ export default function Branches() {
             </DialogContent>
           </Dialog>
         )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {branches.map((branch: any) => (
-          <Card key={branch.id} data-testid={`branch-${branch.id}`}>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Store className="h-5 w-5 text-primary mr-2" />
-                {branch.name}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <MapPin className="h-4 w-4 mr-2" />
-                  {branch.address}
-                </div>
-
-                {branch.phone && (
-                  <div className="flex items-center text-sm text-muted-foreground">
-                    <Phone className="h-4 w-4 mr-2" />
-                    {branch.phone}
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between pt-3 border-t border-border">
-                  <span className={`px-2 py-1 rounded text-xs ${
-                    branch.isActive
-                      ? 'bg-accent text-accent-foreground'
-                      : 'bg-muted text-muted-foreground'
-                  }`}>
-                    {branch.isActive ? 'Active' : 'Inactive'}
-                  </span>
-
-                  {isManagerRole && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleEditClick(branch)}
-                      data-testid={`button-edit-branch-${branch.id}`}
-                    >
-                      Edit
-                    </Button>
-                  )}
-                </div>
+          <div key={branch.id} className="card-modern group hover:scale-[1.02] transition-all duration-300" data-testid={`branch-${branch.id}`}>
+            <div className="flex items-start justify-between mb-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-500/5 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Store className="h-6 w-6 text-amber-500" />
               </div>
-            </CardContent>
-          </Card>
+              <span className={`px-3 py-1.5 rounded-full text-xs font-medium ${
+                branch.isActive
+                  ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                  : 'bg-muted text-muted-foreground border border-border'
+              }`}>
+                {branch.isActive ? 'Active' : 'Inactive'}
+              </span>
+            </div>
+            
+            <h3 className="text-lg font-semibold mb-3">{branch.name}</h3>
+            
+            <div className="space-y-2.5">
+              <div className="flex items-center text-sm text-muted-foreground">
+                <MapPin className="h-4 w-4 mr-2.5 text-primary/60" />
+                {branch.address}
+              </div>
+
+              {branch.phone && (
+                <div className="flex items-center text-sm text-muted-foreground">
+                  <Phone className="h-4 w-4 mr-2.5 text-primary/60" />
+                  {branch.phone}
+                </div>
+              )}
+            </div>
+
+            {isManagerRole && (
+              <div className="pt-4 mt-4 border-t border-border/50">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full rounded-xl border-primary/20 hover:bg-primary/5"
+                  onClick={() => handleEditClick(branch)}
+                  data-testid={`button-edit-branch-${branch.id}`}
+                >
+                  Edit Branch
+                </Button>
+              </div>
+            )}
+          </div>
         ))}
       </div>
 

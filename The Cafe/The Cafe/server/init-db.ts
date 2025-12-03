@@ -634,3 +634,151 @@ export async function seedPhilippineHolidays() {
   }
 }
 
+/**
+ * Seed sample users (1 manager + 6 employees) for development/testing
+ */
+export async function seedSampleUsers() {
+  try {
+    // Get the first branch
+    const branch = sqlite.prepare('SELECT * FROM branches LIMIT 1').get() as any;
+
+    if (!branch) {
+      console.log('⚠️  No branches found. Sample users will be created after setup.');
+      return;
+    }
+
+    const defaultPassword = await bcrypt.hash('password123', 10);
+
+    // Sample users data
+    const users = [
+      // Manager
+      {
+        id: 'user-manager-1',
+        username: 'sarah',
+        firstName: 'Sarah',
+        lastName: 'Johnson',
+        email: 'sarah.johnson@thecafe.com',
+        role: 'manager',
+        position: 'Store Manager',
+        hourlyRate: '350.00',
+      },
+      // Employees
+      {
+        id: 'user-emp-1',
+        username: 'john',
+        firstName: 'John',
+        lastName: 'Smith',
+        email: 'john.smith@thecafe.com',
+        role: 'employee',
+        position: 'Barista',
+        hourlyRate: '125.00',
+      },
+      {
+        id: 'user-emp-2',
+        username: 'jane',
+        firstName: 'Jane',
+        lastName: 'Doe',
+        email: 'jane.doe@thecafe.com',
+        role: 'employee',
+        position: 'Cashier',
+        hourlyRate: '120.00',
+      },
+      {
+        id: 'user-emp-3',
+        username: 'mike',
+        firstName: 'Michael',
+        lastName: 'Brown',
+        email: 'mike.brown@thecafe.com',
+        role: 'employee',
+        position: 'Kitchen Staff',
+        hourlyRate: '130.00',
+      },
+      {
+        id: 'user-emp-4',
+        username: 'emma',
+        firstName: 'Emma',
+        lastName: 'Wilson',
+        email: 'emma.wilson@thecafe.com',
+        role: 'employee',
+        position: 'Barista',
+        hourlyRate: '125.00',
+      },
+      {
+        id: 'user-emp-5',
+        username: 'alex',
+        firstName: 'Alexander',
+        lastName: 'Garcia',
+        email: 'alex.garcia@thecafe.com',
+        role: 'employee',
+        position: 'Server',
+        hourlyRate: '115.00',
+      },
+      {
+        id: 'user-emp-6',
+        username: 'maria',
+        firstName: 'Maria',
+        lastName: 'Santos',
+        email: 'maria.santos@thecafe.com',
+        role: 'employee',
+        position: 'Shift Lead',
+        hourlyRate: '145.00',
+      },
+    ];
+
+    const insertUser = sqlite.prepare(`
+      INSERT INTO users (id, username, password, first_name, last_name, email, role, position, hourly_rate, branch_id, is_active, blockchain_verified, blockchain_hash, verified_at, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    let count = 0;
+    for (const user of users) {
+      // Check if user already exists
+      const existing = sqlite.prepare('SELECT * FROM users WHERE username = ?').get(user.username);
+      if (existing) {
+        continue;
+      }
+
+      const userData = `${user.id}-${user.firstName}-${user.lastName}-${user.email}-${user.position}`;
+      const userHash = crypto.createHash('sha256').update(userData).digest('hex');
+
+      insertUser.run(
+        user.id,
+        user.username,
+        defaultPassword,
+        user.firstName,
+        user.lastName,
+        user.email,
+        user.role,
+        user.position,
+        user.hourlyRate,
+        branch.id,
+        1,
+        1,
+        userHash,
+        Math.floor(Date.now() / 1000),
+        Math.floor(Date.now() / 1000)
+      );
+      count++;
+    }
+
+    if (count > 0) {
+      console.log(`✅ Seeded ${count} sample users`);
+      console.log('   📋 Login credentials:');
+      console.log('   ────────────────────────────────────');
+      console.log('   🔐 Admin:    admin / admin123');
+      console.log('   👔 Manager:  sarah / password123');
+      console.log('   👤 Employee: john / password123');
+      console.log('   👤 Employee: jane / password123');
+      console.log('   👤 Employee: mike / password123');
+      console.log('   👤 Employee: emma / password123');
+      console.log('   👤 Employee: alex / password123');
+      console.log('   👤 Employee: maria / password123');
+      console.log('   ────────────────────────────────────');
+    } else {
+      console.log('ℹ️  All sample users already exist');
+    }
+  } catch (error) {
+    console.error('❌ Failed to seed sample users:', error);
+  }
+}
+

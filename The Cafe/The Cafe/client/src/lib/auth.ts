@@ -27,11 +27,15 @@ export function subscribeToAuth(listener: (state: AuthState) => void) {
 }
 
 export function isManager(): boolean {
-  return authState.user?.role === "manager";
+  return authState.user?.role === "manager" || authState.user?.role === "admin";
 }
 
 export function isAdmin(): boolean {
   return authState.user?.role === "admin";
+}
+
+export function isManagerOnly(): boolean {
+  return authState.user?.role === "manager";
 }
 
 export function isEmployee(): boolean {

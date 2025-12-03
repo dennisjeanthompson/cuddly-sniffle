@@ -1,15 +1,26 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Bell, AlertCircle, CheckCircle, X, DollarSign, Calendar } from "lucide-react";
-import { format, parseISO } from "date-fns";
+import { 
+  Bell, 
+  CheckCircle, 
+  DollarSign, 
+  Calendar, 
+  ArrowRightLeft,
+  AlertCircle,
+  Gift,
+  MessageCircle,
+  CheckCheck,
+  Trash2
+} from "lucide-react";
+import { format, parseISO, formatDistanceToNow } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { getCurrentUser, getAuthState } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
-import { useLocation } from "wouter";
 import MobileHeader from "@/components/layout/mobile-header";
 import MobileBottomNav from "@/components/layout/mobile-bottom-nav";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface Notification {
   id: string;
@@ -26,23 +37,20 @@ export default function MobileNotifications() {
   const { isAuthenticated, user } = getAuthState();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [, setLocation] = useLocation();
 
   // Wait for authentication to load
   if (!isAuthenticated || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <div className="w-16 h-16 bg-primary rounded-xl flex items-center justify-center mx-auto mb-4">
-            <div className="w-8 h-8 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin"></div>
+          <div className="w-20 h-20 bg-primary rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+            <div className="w-10 h-10 border-3 border-primary-foreground border-t-transparent rounded-full animate-spin"></div>
           </div>
-          <p className="text-muted-foreground">Loading...</p>
+          <p className="text-muted-foreground text-lg">Loading notifications...</p>
         </div>
       </div>
     );
   }
-
-  // This component is only accessible on mobile server, so all users are employees
 
   // Fetch notifications
   const { data: notificationsData, isLoading } = useQuery({
@@ -89,126 +97,158 @@ export default function MobileNotifications() {
   const notifications: Notification[] = notificationsData?.notifications || [];
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
-  const handleLogout = async () => {
-    try {
-      await apiRequest('POST', '/api/auth/logout');
-      // Clear auth state
-      localStorage.removeItem('auth-user');
-      window.location.href = '/';
-    } catch (error) {
-      console.error('Logout failed:', error);
-    }
+  const getNotificationConfig = (type: string) => {
+    const configs: Record<string, { icon: any; color: string; bg: string }> = {
+      schedule: { 
+        icon: Calendar, 
+        color: 'text-blue-600', 
+        bg: 'bg-blue-100 dark:bg-blue-950' 
+      },
+      payroll: { 
+        icon: DollarSign, 
+        color: 'text-green-600', 
+        bg: 'bg-green-100 dark:bg-green-950' 
+      },
+      shift_trade: { 
+        icon: ArrowRightLeft, 
+        color: 'text-purple-600', 
+        bg: 'bg-purple-100 dark:bg-purple-950' 
+      },
+      alert: { 
+        icon: AlertCircle, 
+        color: 'text-red-600', 
+        bg: 'bg-red-100 dark:bg-red-950' 
+      },
+      reward: { 
+        icon: Gift, 
+        color: 'text-pink-600', 
+        bg: 'bg-pink-100 dark:bg-pink-950' 
+      },
+      message: { 
+        icon: MessageCircle, 
+        color: 'text-cyan-600', 
+        bg: 'bg-cyan-100 dark:bg-cyan-950' 
+      },
+      default: { 
+        icon: Bell, 
+        color: 'text-orange-600', 
+        bg: 'bg-orange-100 dark:bg-orange-950' 
+      },
+    };
+    return configs[type] || configs.default;
   };
 
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case 'schedule':
-        return <Calendar className="h-4 w-4" />;
-      case 'payroll':
-        return <DollarSign className="h-4 w-4" />;
-      case 'shift_trade':
-        return <AlertCircle className="h-4 w-4" />;
-      default:
-        return <Bell className="h-4 w-4" />;
-    }
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { staggerChildren: 0.05 } }
   };
 
-  const getNotificationColor = (type: string) => {
-    switch (type) {
-      case 'schedule':
-        return 'bg-blue-100 text-blue-800';
-      case 'payroll':
-        return 'bg-green-100 text-green-800';
-      case 'shift_trade':
-        return 'bg-orange-100 text-orange-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
+  const itemVariants = {
+    hidden: { opacity: 0, x: -20 },
+    visible: { opacity: 1, x: 0 },
+    exit: { opacity: 0, x: 20 }
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 pb-28">
       <MobileHeader
         title="Notifications"
-        subtitle={`${unreadCount} unread`}
+        subtitle={unreadCount > 0 ? `${unreadCount} unread` : 'All caught up!'}
         showBack={true}
-        onBack={() => setLocation('/mobile-dashboard')}
         rightAction={
           unreadCount > 0 ? (
             <Button
               variant="ghost"
               size="sm"
-              className="text-primary-foreground"
+              className="text-primary-foreground font-semibold"
               onClick={() => markAllAsReadMutation.mutate()}
               disabled={markAllAsReadMutation.isPending}
             >
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Mark All Read
+              <CheckCheck className="h-5 w-5 mr-1" />
+              Read All
             </Button>
           ) : undefined
         }
       />
 
       {/* Main Content */}
-      <div className="p-4 space-y-3">
+      <div className="p-5">
         {isLoading ? (
-          <div className="text-center py-8">
-            <div className="w-16 h-16 bg-primary rounded-xl flex items-center justify-center mx-auto mb-4">
-              <div className="w-8 h-8 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin"></div>
+          <div className="text-center py-12">
+            <div className="w-20 h-20 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Bell className="h-10 w-10 text-primary animate-pulse" />
             </div>
-            <p className="text-muted-foreground">Loading notifications...</p>
+            <p className="text-muted-foreground text-lg">Loading notifications...</p>
           </div>
         ) : notifications.length === 0 ? (
-          <Card>
-            <CardContent className="p-8 text-center">
-              <Bell className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-muted-foreground">No notifications yet</p>
+          <Card className="border-0 shadow-lg bg-card/80 backdrop-blur">
+            <CardContent className="p-12 text-center">
+              <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                <Bell className="h-12 w-12 text-muted-foreground" />
+              </div>
+              <h3 className="text-2xl font-bold mb-2">All caught up!</h3>
+              <p className="text-muted-foreground text-lg">No notifications at the moment</p>
             </CardContent>
           </Card>
         ) : (
-          notifications.map((notification) => (
-            <Card
-              key={notification.id}
-              className={`${
-                !notification.isRead ? "border-primary bg-primary/5" : ""
-              } cursor-pointer hover:shadow-md transition-shadow`}
-              onClick={() => markAsReadMutation.mutate(notification.id)}
-            >
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      {getNotificationIcon(notification.type)}
-                      <CardTitle className="text-base">
-                        {notification.title}
-                      </CardTitle>
-                      {!notification.isRead && (
-                        <Badge variant="default" className="ml-auto">
-                          New
-                        </Badge>
-                      )}
-                    </div>
-                    <CardDescription className="text-xs">
-                      {format(parseISO(notification.createdAt), "MMM d, h:mm a")}
-                    </CardDescription>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      markAsReadMutation.mutate(notification.id);
-                    }}
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className="space-y-3"
+          >
+            <AnimatePresence>
+              {notifications.map((notification) => {
+                const config = getNotificationConfig(notification.type);
+                const Icon = config.icon;
+                const timeAgo = formatDistanceToNow(parseISO(notification.createdAt), { addSuffix: true });
+                
+                return (
+                  <motion.div
+                    key={notification.id}
+                    variants={itemVariants}
+                    exit="exit"
+                    layout
                   >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm">{notification.message}</p>
-              </CardContent>
-            </Card>
-          ))
+                    <Card
+                      className={`border-0 shadow-md cursor-pointer transition-all active:scale-[0.98] ${
+                        !notification.isRead 
+                          ? 'bg-primary/5 border-l-4 border-l-primary shadow-lg' 
+                          : 'bg-card/80 backdrop-blur'
+                      }`}
+                      onClick={() => markAsReadMutation.mutate(notification.id)}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-4">
+                          <div className={`w-14 h-14 rounded-2xl ${config.bg} flex items-center justify-center shrink-0`}>
+                            <Icon className={`h-7 w-7 ${config.color}`} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2 mb-1">
+                              <h4 className="font-bold text-lg leading-tight">
+                                {notification.title}
+                              </h4>
+                              {!notification.isRead && (
+                                <Badge className="bg-primary text-primary-foreground shrink-0">
+                                  New
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-base text-muted-foreground mb-2 line-clamp-2">
+                              {notification.message}
+                            </p>
+                            <p className="text-sm text-muted-foreground/60">
+                              {timeAgo}
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          </motion.div>
         )}
       </div>
 

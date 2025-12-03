@@ -1,19 +1,45 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Clock, DollarSign, Activity, Pencil, Trash2, UserPlus, Search, Shield, AlertCircle, Eye, Receipt } from "lucide-react";
+import { Users, Clock, DollarSign, Activity, Pencil, Trash2, UserPlus, Search, Shield, AlertCircle, Eye, Receipt, CheckCircle, XCircle, User, Building2, Briefcase, ChevronRight, LayoutGrid, Table2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { isManager } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
+import { EmployeeDataGrid } from "@/components/employees/employee-data-grid";
+import { useTheme } from "@/components/theme-provider";
+
+// Animation variants for staggered reveal
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.06,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      type: "spring",
+      stiffness: 300,
+      damping: 24,
+    },
+  },
+};
 
 interface Employee {
   id: string;
@@ -162,6 +188,8 @@ export default function Employees() {
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [branchFilter, setBranchFilter] = useState<string>('all');
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('table'); // Default to DataGrid
+  const { theme } = useTheme();
 
   // Fetch employee statistics
   const { data: employeeStats } = useQuery({
@@ -542,64 +570,98 @@ export default function Employees() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Employee Statistics Dashboard */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Employees</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalEmployees}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats.activeEmployees} active
-            </p>
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 p-6 space-y-6">
+      {/* Stats Cards */}
+      <motion.div 
+        className="grid grid-cols-2 lg:grid-cols-3 gap-4"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+      >
+        <Card className="border-0 shadow-md bg-card/80 backdrop-blur">
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between mb-3">
+              <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
+                <Users className="h-5 w-5 text-primary" />
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground">Total Employees</p>
+            <p className="text-2xl font-bold mt-1">{stats.totalEmployees}</p>
+            <div className="flex items-center gap-1 mt-2">
+              <Badge variant="secondary" className="text-xs font-normal">
+                <CheckCircle className="h-3 w-3 mr-1" />
+                {stats.activeEmployees} active
+              </Badge>
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Hours This Month</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalHoursThisMonth.toFixed(1)}</div>
-            <p className="text-xs text-muted-foreground">
-              Total worked hours
-            </p>
+        <Card className="border-0 shadow-md bg-card/80 backdrop-blur">
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between mb-3">
+              <div className="w-12 h-12 rounded-2xl bg-blue-100 dark:bg-blue-950 flex items-center justify-center">
+                <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground">Hours This Month</p>
+            <p className="text-2xl font-bold mt-1">{stats.totalHoursThisMonth.toFixed(1)}</p>
+            <p className="text-xs text-muted-foreground mt-2">Total worked hours</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Payroll Cost</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₱{stats.totalPayrollThisMonth.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">
-              This month
-            </p>
+        <Card className="border-0 shadow-md bg-card/80 backdrop-blur">
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between mb-3">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-950 flex items-center justify-center">
+                <DollarSign className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground">Payroll Cost</p>
+            <p className="text-2xl font-bold mt-1">₱{stats.totalPayrollThisMonth.toFixed(0)}</p>
+            <p className="text-xs text-muted-foreground mt-2">This month estimate</p>
           </CardContent>
         </Card>
-      </div>
+      </motion.div>
 
-      <div className="flex items-center justify-between">
+      {/* Header with Add Button */}
+      <motion.div 
+        className="flex items-center justify-between"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.2 }}
+      >
         <div>
-          <h2 className="text-2xl font-bold">Employee Management</h2>
-          <p className="text-muted-foreground">
-            Manage your team members and their details
-          </p>
+          <h2 className="text-xl font-bold">Employee Directory</h2>
+          <p className="text-sm text-muted-foreground">{filteredEmployees.length} team members</p>
         </div>
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => setIsOpen(true)}>
-              <UserPlus className="mr-2 h-4 w-4" />
-              Add Employee
+        <div className="flex items-center gap-2">
+          {/* View Toggle */}
+          <div className="flex items-center bg-secondary/50 rounded-lg p-1">
+            <Button
+              variant={viewMode === 'cards' ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('cards')}
+              className="h-8 px-3"
+            >
+              <LayoutGrid className="h-4 w-4" />
             </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
+            <Button
+              variant={viewMode === 'table' ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('table')}
+              className="h-8 px-3"
+            >
+              <Table2 className="h-4 w-4" />
+            </Button>
+          </div>
+          <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => setIsOpen(true)} size="sm" className="shadow-sm">
+                <UserPlus className="mr-2 h-4 w-4" />
+                Add Employee
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
             <form onSubmit={handleSubmit}>
               <DialogHeader>
                 <DialogTitle>
@@ -788,162 +850,161 @@ export default function Employees() {
             </form>
           </DialogContent>
         </Dialog>
-      </div>
+        </div>
+      </motion.div>
 
-      {/* Search and Filter Bar */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Employee Directory</CardTitle>
-          <CardDescription>
-            Search and filter employees by various criteria
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+      {/* Search and Filters */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+      >
+        <Card className="border-0 shadow-md bg-card/80 backdrop-blur">
+          <CardContent className="p-4">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                 <Input
-                  placeholder="Search employees..."
+                  placeholder="Search by name, email, position..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8"
+                  className="pl-9 h-10 bg-secondary/50 border-0 focus-visible:ring-2"
                 />
               </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full sm:w-[130px] h-10 bg-secondary/50 border-0">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={roleFilter} onValueChange={setRoleFilter}>
+                <SelectTrigger className="w-full sm:w-[130px] h-10 bg-secondary/50 border-0">
+                  <SelectValue placeholder="Role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Roles</SelectItem>
+                  <SelectItem value="employee">Employee</SelectItem>
+                  <SelectItem value="manager">Manager</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={branchFilter} onValueChange={setBranchFilter}>
+                <SelectTrigger className="w-full sm:w-[130px] h-10 bg-secondary/50 border-0">
+                  <SelectValue placeholder="Branch" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Branches</SelectItem>
+                  {branchesData.map((branch) => (
+                    <SelectItem key={branch.id} value={branch.id}>
+                      {branch.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={roleFilter} onValueChange={setRoleFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Roles</SelectItem>
-                <SelectItem value="employee">Employee</SelectItem>
-                <SelectItem value="manager">Manager</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={branchFilter} onValueChange={setBranchFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by branch" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Branches</SelectItem>
-                {branchesData.map((branch) => (
-                  <SelectItem key={branch.id} value={branch.id}>
-                    {branch.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
 
-          {/* Bulk Actions */}
-          {selectedEmployees.length > 0 && (
-            <div className="flex items-center gap-2 mb-4 p-3 bg-muted rounded-lg">
-              <span className="text-sm font-medium">
-                {selectedEmployees.length} employee{selectedEmployees.length > 1 ? 's' : ''} selected
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleBulkActivate}
-                className="text-green-600 hover:text-green-700"
+            {/* Bulk Actions */}
+            {selectedEmployees.length > 0 && (
+              <motion.div 
+                className="flex items-center gap-2 mt-4 pt-4 border-t"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
               >
-                Activate Selected
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleBulkDeactivate}
-                className="text-red-600 hover:text-red-700"
-              >
-                Deactivate Selected
-              </Button>
-            </div>
-          )}
-
-          {isLoading ? (
-            <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-          ) : employeesData.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="mx-auto h-12 w-12 text-muted-foreground">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-12 w-12 mx-auto opacity-40"
+                <Badge variant="secondary" className="font-normal">
+                  {selectedEmployees.length} selected
+                </Badge>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBulkActivate}
+                  className="h-8 text-xs"
                 >
-                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                  <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                </svg>
-              </div>
-              <h3 className="mt-2 text-sm font-medium">No employees found</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Get started by adding a new employee.
-              </p>
-              <div className="mt-6">
-                <Button onClick={() => setIsOpen(true)}>
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Add Employee
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  Activate
                 </Button>
-              </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBulkDeactivate}
+                  className="h-8 text-xs text-destructive hover:text-destructive"
+                >
+                  <XCircle className="h-3 w-3 mr-1" />
+                  Deactivate
+                </Button>
+              </motion.div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Employee List - DataGrid or Cards */}
+      {viewMode === 'table' ? (
+        /* MUI X DataGrid View */
+        <Card className="border-0 shadow-md bg-card/80 backdrop-blur overflow-hidden">
+          <EmployeeDataGrid
+            employees={filteredEmployees}
+            loading={isLoading}
+            onView={handleViewDetails}
+            onEdit={handleEdit}
+            onDeductions={handleDeductionsClick}
+            onDelete={handleDelete}
+            selectedIds={selectedEmployees}
+            onSelectionChange={setSelectedEmployees}
+            darkMode={theme === 'dark'}
+          />
+        </Card>
+      ) : (
+        /* Card View */
+        <>
+          {isLoading ? (
+            <div className="flex justify-center py-16">
+              <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
             </div>
+          ) : filteredEmployees.length === 0 ? (
+            <motion.div 
+              className="text-center py-16"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+            >
+              <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-4">
+                <Users className="h-8 w-8 text-muted-foreground/50" />
+              </div>
+              <p className="font-semibold text-lg">No employees found</p>
+              <p className="text-sm text-muted-foreground mt-1">Try adjusting your filters or add a new employee</p>
+            </motion.div>
           ) : (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12">
-                      <input
-                        type="checkbox"
-                        checked={selectedEmployees.length === filteredEmployees.length && filteredEmployees.length > 0}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedEmployees(filteredEmployees.map(emp => emp.id));
-                          } else {
-                            setSelectedEmployees([]);
-                          }
-                        }}
-                        className="rounded border-gray-300"
-                      />
-                    </TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Position</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Hourly Rate</TableHead>
-                    <TableHead>Hours This Month</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Performance</TableHead>
-                    <TableHead>Verification</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredEmployees.map((employee) => {
-                    const performance = getEmployeePerformance(employee.id);
-                    return (
-                      <TableRow key={employee.id}>
-                        <TableCell>
+            <motion.div 
+              className="space-y-3"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+            >
+              {filteredEmployees.map((employee) => {
+                const getRoleColor = (role: string) => {
+                  switch (role) {
+                    case 'manager': return 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-400';
+                    case 'admin': return 'bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-400';
+                    default: return 'bg-secondary text-muted-foreground';
+                  }
+                };
+
+                const getAvatarColor = (role: string) => {
+                  switch (role) {
+                    case 'manager': return 'bg-blue-100 dark:bg-blue-950';
+                    case 'admin': return 'bg-purple-100 dark:bg-purple-950';
+                    default: return 'bg-primary/10';
+                  }
+                };
+
+                return (
+                  <motion.div key={employee.id} variants={itemVariants}>
+                    <Card className="border-0 shadow-md bg-card/80 backdrop-blur hover:shadow-lg transition-all duration-200 overflow-hidden group">
+                      <CardContent className="p-0">
+                        <div className="flex items-center gap-4 p-4">
+                          {/* Checkbox */}
                           <input
                             type="checkbox"
                             checked={selectedEmployees.includes(employee.id)}
@@ -954,122 +1015,138 @@ export default function Employees() {
                                 setSelectedEmployees(selectedEmployees.filter(id => id !== employee.id));
                               }
                             }}
-                            className="rounded border-gray-300"
+                            className="rounded border-border h-4 w-4 shrink-0"
                           />
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {employee.firstName} {employee.lastName}
-                        </TableCell>
-                        <TableCell>{employee.email}</TableCell>
-                        <TableCell>{employee.position}</TableCell>
-                        <TableCell>
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            employee.role === 'manager' 
-                              ? 'bg-blue-100 text-blue-800' 
-                              : 'bg-gray-100 text-gray-800'
-                          }`}>
-                            {employee.role.charAt(0).toUpperCase() + employee.role.slice(1)}
-                          </span>
-                        </TableCell>
-                        <TableCell>₱{parseFloat(employee.hourlyRate.toString()).toFixed(2)}/hr</TableCell>
-                        <TableCell>
-                          <div className="flex items-center space-x-2">
-                            <Clock className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm font-medium">
-                              {employee.hoursThisMonth?.toFixed(1) || '0.0'}h
+
+                          {/* Avatar */}
+                          <div className={`w-14 h-14 rounded-2xl ${getAvatarColor(employee.role)} flex items-center justify-center shrink-0`}>
+                            <span className="text-lg font-bold text-primary">
+                              {employee.firstName.charAt(0)}{employee.lastName.charAt(0)}
                             </span>
                           </div>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {employee.shiftsThisMonth || 0} shifts
-                          </p>
-                        </TableCell>
-                        <TableCell>
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            employee.isActive
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {employee.isActive ? 'Active' : 'Inactive'}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center space-x-2">
-                            <Activity className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm">
-                              {performance?.rating ? `${performance.rating}/5.0` : 'N/A'}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center space-x-2">
-                            {employee.blockchainVerified ? (
-                              <Badge variant="default" className="bg-green-100 text-green-800">
-                                <Shield className="h-3 w-3 mr-1" />
-                                Verified
+
+                          {/* Employee Info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="font-semibold truncate">
+                                {employee.firstName} {employee.lastName}
+                              </h3>
+                              {employee.blockchainVerified && (
+                                <Shield className="h-4 w-4 text-green-600 shrink-0" />
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground truncate">{employee.email}</p>
+                            <div className="flex items-center gap-2 mt-2 flex-wrap">
+                              <Badge variant="secondary" className={`text-xs ${getRoleColor(employee.role)}`}>
+                                <User className="h-3 w-3 mr-1" />
+                                {employee.role}
                               </Badge>
-                            ) : (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleVerifyClick(employee)}
-                                disabled={verifyEmployee.isPending}
-                                className="text-xs"
-                              >
-                                <Shield className="h-3 w-3 mr-1" />
-                                Verify
-                              </Button>
-                            )}
+                              <Badge variant="secondary" className="text-xs font-normal">
+                                <Briefcase className="h-3 w-3 mr-1" />
+                                {employee.position}
+                              </Badge>
+                            </div>
                           </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end space-x-2">
+
+                          {/* Stats */}
+                          <div className="hidden sm:flex items-center gap-6 shrink-0">
+                            <div className="text-right">
+                              <p className="text-sm font-semibold tabular-nums">₱{parseFloat(employee.hourlyRate.toString()).toFixed(0)}/hr</p>
+                              <p className="text-xs text-muted-foreground">Rate</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-semibold tabular-nums">{employee.hoursThisMonth?.toFixed(1) || '0.0'}h</p>
+                              <p className="text-xs text-muted-foreground">{employee.shiftsThisMonth || 0} shifts</p>
+                            </div>
+                            <div className="text-right">
+                              <Badge 
+                                variant="secondary" 
+                                className={employee.isActive 
+                                  ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400' 
+                                  : 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400'
+                                }
+                              >
+                                {employee.isActive ? (
+                                  <><CheckCircle className="h-3 w-3 mr-1" /> Active</>
+                                ) : (
+                                  <><XCircle className="h-3 w-3 mr-1" /> Inactive</>
+                                )}
+                              </Badge>
+                            </div>
+                          </div>
+
+                          {/* Actions */}
+                          <div className="flex items-center gap-1 shrink-0">
                             <Button
                               variant="ghost"
                               size="icon"
                               onClick={() => handleViewDetails(employee)}
-                              title="View Details"
+                              className="h-9 w-9 rounded-xl hover:bg-primary/10"
                             >
                               <Eye className="h-4 w-4" />
-                              <span className="sr-only">View Details</span>
                             </Button>
                             <Button
                               variant="ghost"
                               size="icon"
                               onClick={() => handleEdit(employee)}
-                              title="Edit Employee"
+                              className="h-9 w-9 rounded-xl hover:bg-primary/10"
                             >
                               <Pencil className="h-4 w-4" />
-                              <span className="sr-only">Edit</span>
                             </Button>
                             <Button
                               variant="ghost"
                               size="icon"
                               onClick={() => handleDeductionsClick(employee)}
-                              title="Manage Deductions"
+                              className="h-9 w-9 rounded-xl hover:bg-primary/10"
                             >
                               <Receipt className="h-4 w-4" />
-                              <span className="sr-only">Deductions</span>
                             </Button>
                             <Button
                               variant="ghost"
                               size="icon"
                               onClick={() => handleDelete(employee.id)}
-                              className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                              className="h-9 w-9 rounded-xl hover:bg-destructive/10 text-destructive"
                             >
                               <Trash2 className="h-4 w-4" />
-                              <span className="sr-only">Delete</span>
                             </Button>
                           </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
+                        </div>
+
+                        {/* Mobile Stats Row */}
+                        <div className="sm:hidden border-t bg-muted/30 px-4 py-3 flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div>
+                              <p className="text-xs text-muted-foreground">Rate</p>
+                              <p className="text-sm font-semibold">₱{parseFloat(employee.hourlyRate.toString()).toFixed(0)}/hr</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">Hours</p>
+                              <p className="text-sm font-semibold">{employee.hoursThisMonth?.toFixed(1) || '0.0'}h</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">Shifts</p>
+                              <p className="text-sm font-semibold">{employee.shiftsThisMonth || 0}</p>
+                            </div>
+                          </div>
+                          <Badge 
+                            variant="secondary" 
+                            className={employee.isActive 
+                              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400' 
+                              : 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400'
+                            }
+                          >
+                            {employee.isActive ? 'Active' : 'Inactive'}
+                          </Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                );
+              })}
+            </motion.div>
           )}
-        </CardContent>
-      </Card>
+        </>
+      )}
 
       {/* View Employee Details Dialog */}
       <Dialog open={viewDetailsOpen} onOpenChange={setViewDetailsOpen}>

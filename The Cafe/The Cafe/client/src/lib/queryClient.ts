@@ -94,13 +94,51 @@ export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       queryFn: getQueryFn({ on401: "throw" }),
-      refetchInterval: false,
-      refetchOnWindowFocus: false,
-      staleTime: Infinity,
-      retry: false,
+      // Real-time sync: refetch data every 30 seconds for active queries
+      refetchInterval: 30000,
+      // Refetch when window regains focus for real-time feel
+      refetchOnWindowFocus: true,
+      // Data is considered stale after 10 seconds
+      staleTime: 10000,
+      // Retry failed requests once
+      retry: 1,
+      // Keep data in cache for 5 minutes
+      gcTime: 5 * 60 * 1000,
     },
     mutations: {
       retry: false,
+      // After mutation success, automatically refetch related queries
+      onSuccess: () => {
+        // Invalidate common queries that might be affected
+        queryClient.invalidateQueries();
+      },
     },
   },
 });
+
+// Helper to invalidate specific query groups for real-time sync
+export const invalidateQueries = {
+  payroll: () => {
+    queryClient.invalidateQueries({ queryKey: ['/api/payroll'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/payroll/periods'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/payroll/entries'] });
+  },
+  shifts: () => {
+    queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/shifts/branch'] });
+  },
+  employees: () => {
+    queryClient.invalidateQueries({ queryKey: ['/api/employees'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/employees/stats'] });
+  },
+  notifications: () => {
+    queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+  },
+  timeOff: () => {
+    queryClient.invalidateQueries({ queryKey: ['/api/time-off-requests'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/approvals'] });
+  },
+  all: () => {
+    queryClient.invalidateQueries();
+  },
+};

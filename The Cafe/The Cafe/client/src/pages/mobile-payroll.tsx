@@ -1,15 +1,20 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DollarSign, Clock, Download } from "lucide-react";
-import { format, parseISO } from "date-fns";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DollarSign, Clock, Download, Eye, FileText, TrendingUp, X, Loader2 } from "lucide-react";
+import { format, parseISO, subDays } from "date-fns";
+import { motion } from "framer-motion";
 import { apiRequest } from "@/lib/queryClient";
 import { getCurrentUser, getAuthState } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import MobileHeader from "@/components/layout/mobile-header";
 import MobileBottomNav from "@/components/layout/mobile-bottom-nav";
+import { PayslipViewer } from "@/components/payroll/payslip-viewer";
+import { PayslipData, PayslipEarning, PayslipDeduction } from "@shared/payslip-types";
 
 interface PayrollEntry {
   id: string;
@@ -21,21 +26,72 @@ interface PayrollEntry {
   createdAt: string;
 }
 
+interface PayslipResponse {
+  payslip: {
+    id: string;
+    employeeName: string;
+    period: string;
+    basicPay?: number | string;
+    grossPay?: number | string;
+    holidayPay?: number | string;
+    overtimePay?: number | string;
+    nightDiffPay?: number | string;
+    allowances?: number | string;
+    sssContribution?: number | string;
+    sssLoan?: number | string;
+    philHealthContribution?: number | string;
+    pagibigContribution?: number | string;
+    pagibigLoan?: number | string;
+    withholdingTax?: number | string;
+    advances?: number | string;
+    otherDeductions?: number | string;
+    totalDeductions?: number | string;
+    netPay?: number | string;
+    breakdown?: {
+      aggregated?: {
+        perDate?: Array<{
+          date: string;
+          hoursWorked: number;
+          overtimeHours: number;
+          nightHours: number;
+          basePay: number;
+          holidayPremium: number;
+          overtimePay: number;
+          nightDiffPremium: number;
+          totalForDate: number;
+          holidayType: string;
+          holidayName?: string;
+          isRestDay: boolean;
+        }>;
+      };
+    };
+  };
+}
+
 export default function MobilePayroll() {
   const currentUser = getCurrentUser();
   const { isAuthenticated, user } = getAuthState();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const [selectedPayslipId, setSelectedPayslipId] = useState<string | null>(null);
+  const [payslipDialogOpen, setPayslipDialogOpen] = useState(false);
+  const [payslipData, setPayslipData] = useState<PayslipData | null>(null);
+  const [isLoadingPayslip, setIsLoadingPayslip] = useState(false);
+  const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
 
   // Wait for authentication to load
   if (!isAuthenticated || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <div className="w-16 h-16 bg-primary rounded-xl flex items-center justify-center mx-auto mb-4">
-            <div className="w-8 h-8 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin"></div>
-          </div>
-          <p className="text-muted-foreground">Loading...</p>
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="w-16 h-16 bg-primary rounded-xl flex items-center justify-center mx-auto mb-4"
+          >
+            <Loader2 className="w-8 h-8 text-primary-foreground animate-spin" />
+          </motion.div>
+          <p className="text-muted-foreground text-lg">Loading...</p>
         </div>
       </div>
     );
@@ -43,265 +99,284 @@ export default function MobilePayroll() {
 
   // This component is only accessible on mobile server, so all users are employees
 
-  // Fetch payroll entries
+  // Fetch payroll entries with real-time updates
   const { data: payrollData, isLoading } = useQuery({
     queryKey: ['mobile-payroll', currentUser?.id],
     queryFn: async () => {
       const response = await apiRequest('GET', '/api/payroll');
       return response.json();
     },
+    refetchInterval: 30000, // Refresh every 30 seconds for real-time sync
+    refetchOnWindowFocus: true,
   });
 
   const payrollEntries: PayrollEntry[] = payrollData?.entries || [];
 
-  const handleLogout = async () => {
+  // Transform payroll response to PayslipData format
+  const transformToPayslipData = (response: PayslipResponse, entry: PayrollEntry): PayslipData => {
+    const payslip = response.payslip;
+    const periodDate = parseISO(payslip.period);
+    const startDate = subDays(periodDate, 14); // Assume bi-weekly period
+    
+    const basicPay = parseFloat(String(payslip.basicPay || payslip.grossPay || 0));
+    const holidayPay = parseFloat(String(payslip.holidayPay || 0));
+    const overtimePay = parseFloat(String(payslip.overtimePay || 0));
+    const nightDiffPay = parseFloat(String(payslip.nightDiffPay || 0));
+    const allowances = parseFloat(String(payslip.allowances || 0));
+    const grossPay = parseFloat(String(payslip.grossPay || 0));
+    
+    const sssContribution = parseFloat(String(payslip.sssContribution || 0));
+    const sssLoan = parseFloat(String(payslip.sssLoan || 0));
+    const philHealthContribution = parseFloat(String(payslip.philHealthContribution || 0));
+    const pagibigContribution = parseFloat(String(payslip.pagibigContribution || 0));
+    const pagibigLoan = parseFloat(String(payslip.pagibigLoan || 0));
+    const withholdingTax = parseFloat(String(payslip.withholdingTax || 0));
+    const advances = parseFloat(String(payslip.advances || 0));
+    const otherDeductions = parseFloat(String(payslip.otherDeductions || 0));
+    const totalDeductions = parseFloat(String(payslip.totalDeductions || entry.deductions || 0));
+    const netPay = parseFloat(String(payslip.netPay || entry.netPay || 0));
+    
+    // Build earnings array
+    const earnings: PayslipEarning[] = [];
+    
+    if (basicPay > 0) {
+      earnings.push({
+        code: "BASIC",
+        label: "Basic Salary",
+        amount: basicPay,
+        hours: parseFloat(String(entry.totalHours)) || undefined,
+      });
+    }
+    
+    if (overtimePay > 0) {
+      earnings.push({
+        code: "OT",
+        label: "Overtime Pay (130%)",
+        amount: overtimePay,
+        is_overtime: true,
+        multiplier: 130,
+      });
+    }
+    
+    if (holidayPay > 0) {
+      earnings.push({
+        code: "HOL",
+        label: "Holiday Pay",
+        amount: holidayPay,
+        holiday_type: "regular",
+        multiplier: 200,
+      });
+    }
+    
+    if (nightDiffPay > 0) {
+      earnings.push({
+        code: "ND",
+        label: "Night Differential (10%)",
+        amount: nightDiffPay,
+      });
+    }
+    
+    if (allowances > 0) {
+      earnings.push({
+        code: "ALLOW",
+        label: "Allowances",
+        amount: allowances,
+      });
+    }
+    
+    // Build deductions array
+    const deductions: PayslipDeduction[] = [];
+    
+    if (withholdingTax > 0) {
+      deductions.push({ code: "TAX", label: "Withholding Tax", amount: withholdingTax });
+    }
+    
+    if (sssContribution > 0) {
+      deductions.push({ code: "SSS", label: "SSS Contribution", amount: sssContribution });
+    }
+    
+    if (sssLoan > 0) {
+      deductions.push({ code: "SSS_LOAN", label: "SSS Loan", amount: sssLoan, is_loan: true });
+    }
+    
+    if (philHealthContribution > 0) {
+      deductions.push({ code: "PH", label: "PhilHealth Contribution", amount: philHealthContribution });
+    }
+    
+    if (pagibigContribution > 0) {
+      deductions.push({ code: "PAGIBIG", label: "Pag-IBIG Contribution", amount: pagibigContribution });
+    }
+    
+    if (pagibigLoan > 0) {
+      deductions.push({ code: "PAGIBIG_LOAN", label: "Pag-IBIG Loan", amount: pagibigLoan, is_loan: true });
+    }
+    
+    if (advances > 0) {
+      deductions.push({ code: "ADV", label: "Advances", amount: advances });
+    }
+    
+    if (otherDeductions > 0) {
+      deductions.push({ code: "OTHER", label: "Other Deductions", amount: otherDeductions });
+    }
+    
+    // Calculate actual totals from items
+    const earningsTotal = earnings.reduce((sum, e) => sum + e.amount, 0);
+    const deductionsTotal = deductions.reduce((sum, d) => sum + d.amount, 0);
+    
+    return {
+      payslip_id: `PS-${payslip.id || entry.id}`,
+      company: {
+        name: "The Café Inc.",
+        address: "123 Coffee Lane, Makati City, Metro Manila 1200",
+        tin: "123-456-789-000",
+        phone: "(02) 8123-4567",
+        email: "payroll@thecafe.ph"
+      },
+      employee: {
+        id: currentUser?.id?.toString() || "EMP-000",
+        name: payslip.employeeName || (currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "Employee"),
+        position: currentUser?.position || "Team Member",
+        department: "Operations",
+        tin: "XXX-XXX-XXX",
+        sss: "XX-XXXXXXX-X",
+        philhealth: "XX-XXXXXXXXX-X",
+        pagibig: "XXXX-XXXX-XXXX"
+      },
+      pay_period: {
+        start: format(startDate, "yyyy-MM-dd"),
+        end: format(periodDate, "yyyy-MM-dd"),
+        payment_date: format(periodDate, "yyyy-MM-dd"),
+        frequency: "semi-monthly"
+      },
+      earnings,
+      deductions,
+      gross: earningsTotal || grossPay,
+      total_deductions: deductionsTotal || totalDeductions,
+      net_pay: netPay,
+      ytd: {
+        gross: 0,
+        deductions: 0,
+        net: 0,
+      },
+      employer_contributions: [
+        { code: "SSS_ER", label: "SSS (Employer Share)", amount: sssContribution * 2 },
+        { code: "PH_ER", label: "PhilHealth (Employer Share)", amount: philHealthContribution },
+        { code: "PAGIBIG_ER", label: "Pag-IBIG (Employer Share)", amount: 100 },
+      ],
+      payment_method: {
+        type: "Bank Transfer",
+        bank: "BPI",
+        account_last4: "XXXX"
+      },
+      verification_code: "",
+    };
+  };
+
+  const handleViewPayslip = async (entry: PayrollEntry) => {
+    setSelectedPayslipId(entry.id);
+    setPayslipDialogOpen(true);
+    setIsLoadingPayslip(true);
+    setPayslipData(null);
+    
     try {
-      await apiRequest('POST', '/api/auth/logout');
-      // Clear auth state
-      localStorage.removeItem('auth-user');
-      window.location.href = '/';
-    } catch (error) {
-      console.error('Logout failed:', error);
+      const response = await apiRequest('GET', `/api/payroll/payslip/${entry.id}`);
+      const data: PayslipResponse = await response.json();
+      const transformedData = transformToPayslipData(data, entry);
+      setPayslipData(transformedData);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to load payslip",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingPayslip(false);
     }
   };
 
-  // Helper to generate breakdown HTML from payslip.breakdown
-  const generateBreakdownHTML = (breakdown: any): string => {
-    if (!breakdown?.aggregated?.perDate?.length) return '';
+  const handleDownloadPDF = async () => {
+    if (!payslipData) return;
     
-    const perDate = breakdown.aggregated.perDate;
-    let html = `
-      <div class="section">
-        <div class="section-title">DAILY PAY BREAKDOWN</div>
-        <table class="breakdown-table">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Type</th>
-              <th>Hours</th>
-              <th>OT Hrs</th>
-              <th>Night Hrs</th>
-              <th>Base Pay</th>
-              <th>Holiday</th>
-              <th>OT Pay</th>
-              <th>Night Diff</th>
-              <th>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-    `;
-    
-    for (const day of perDate) {
-      const dateStr = format(new Date(day.date), 'MMM d');
-      const typeLabel = day.holidayType === 'normal' 
-        ? (day.isRestDay ? 'Rest Day' : 'Regular') 
-        : (day.holidayName || day.holidayType.replace('_', ' '));
-      html += `
-        <tr>
-          <td>${dateStr}</td>
-          <td>${typeLabel}</td>
-          <td>${day.hoursWorked.toFixed(1)}</td>
-          <td>${day.overtimeHours.toFixed(1)}</td>
-          <td>${day.nightHours.toFixed(1)}</td>
-          <td>₱${day.basePay.toFixed(2)}</td>
-          <td>₱${day.holidayPremium.toFixed(2)}</td>
-          <td>₱${day.overtimePay.toFixed(2)}</td>
-          <td>₱${day.nightDiffPremium.toFixed(2)}</td>
-          <td>₱${day.totalForDate.toFixed(2)}</td>
-        </tr>
-      `;
-    }
-    
-    html += `
-          </tbody>
-        </table>
-      </div>
-    `;
-    return html;
-  };
-
-  const handleDownloadPayslip = async (entryId: string) => {
+    setIsDownloadingPDF(true);
     try {
-      const response = await apiRequest('GET', `/api/payroll/payslip/${entryId}`);
-      const payslipData = await response.json();
-
-      // Create Philippine-format payslip
-      const payslip = payslipData.payslip;
-      const breakdown = payslip.breakdown;
-      const basicPay = parseFloat(payslip.basicPay || payslip.grossPay || 0);
-      const holidayPay = parseFloat(payslip.holidayPay || 0);
-      const overtimePay = parseFloat(payslip.overtimePay || 0);
-      const grossPay = parseFloat(payslip.grossPay || 0);
-      const sssContribution = parseFloat(payslip.sssContribution || 0);
-      const sssLoan = parseFloat(payslip.sssLoan || 0);
-      const philHealthContribution = parseFloat(payslip.philHealthContribution || 0);
-      const pagibigContribution = parseFloat(payslip.pagibigContribution || 0);
-      const pagibigLoan = parseFloat(payslip.pagibigLoan || 0);
-      const withholdingTax = parseFloat(payslip.withholdingTax || 0);
-      const advances = parseFloat(payslip.advances || 0);
-      const otherDeductions = parseFloat(payslip.otherDeductions || 0);
-      const totalDeductions = parseFloat(payslip.totalDeductions || payslip.deductions || 0);
-      const netPay = parseFloat(payslip.netPay || 0);
-      const breakdownHTML = generateBreakdownHTML(breakdown);
-
-      const payslipHTML = `
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Payslip - ${payslip.employeeName}</title>
-          <style>
-            body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 40px 20px; }
-            .header { text-align: center; margin-bottom: 20px; }
-            .header h1 { margin: 0; font-size: 24px; }
-            .header p { margin: 5px 0; font-size: 14px; }
-            .employee-name { margin: 20px 0; padding: 10px; border-bottom: 1px solid #333; }
-            .section { margin: 20px 0; }
-            .section-title { font-weight: bold; margin-bottom: 10px; text-decoration: underline; }
-            .pay-row { display: flex; justify-content: space-between; padding: 5px 0; }
-            .pay-row.indent { padding-left: 20px; }
-            .total-row { border-top: 2px solid #333; border-bottom: 2px double #333; padding: 10px 0; font-weight: bold; font-size: 1.1em; }
-            .signatures { margin-top: 60px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
-            .signature-line { border-top: 1px solid #333; padding-top: 5px; text-align: center; }
-            .date-line { margin-top: 40px; }
-            .date-line .signature-line { display: inline-block; width: 300px; }
-            .breakdown-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
-            .breakdown-table th, .breakdown-table td { border: 1px solid #ccc; padding: 4px 6px; text-align: right; }
-            .breakdown-table th { background: #f5f5f5; font-weight: bold; }
-            .breakdown-table td:first-child, .breakdown-table th:first-child { text-align: left; }
-            .breakdown-table td:nth-child(2), .breakdown-table th:nth-child(2) { text-align: left; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <h1>The Café</h1>
-            <p>Payslip Period: ${format(new Date(payslip.period), "MMMM d, yyyy")}</p>
-          </div>
-
-          <div class="employee-name">
-            <strong>Name of Employee:</strong> ${payslip.employeeName}
-          </div>
-
-          <div class="section">
-            <div class="section-title">BASIC PAY</div>
-            <div class="pay-row">
-              <span>Basic Pay:</span>
-              <span>₱${basicPay.toFixed(2)}</span>
-            </div>
-            <div class="pay-row indent">
-              <span>Add: Holiday:</span>
-              <span>₱${holidayPay.toFixed(2)}</span>
-            </div>
-            <div class="pay-row indent">
-              <span>Add: Overtime:</span>
-              <span>₱${overtimePay.toFixed(2)}</span>
-            </div>
-          </div>
-
-          <div class="section">
-            <div class="section-title">GROSS PAY</div>
-            <div class="pay-row">
-              <span>Gross Pay:</span>
-              <span>₱${grossPay.toFixed(2)}</span>
-            </div>
-          </div>
-
-          ${breakdownHTML}
-
-          <div class="section">
-            <div class="section-title">DEDUCTIONS</div>
-            <div class="pay-row">
-              <span>Withholding Tax:</span>
-              <span>₱${withholdingTax.toFixed(2)}</span>
-            </div>
-            <div class="pay-row">
-              <span>SSS Contribution:</span>
-              <span>₱${sssContribution.toFixed(2)}</span>
-            </div>
-            <div class="pay-row">
-              <span>SSS Loan:</span>
-              <span>₱${sssLoan.toFixed(2)}</span>
-            </div>
-            <div class="pay-row">
-              <span>PhilHealth:</span>
-              <span>₱${philHealthContribution.toFixed(2)}</span>
-            </div>
-            <div class="pay-row">
-              <span>Pag-IBIG Contribution:</span>
-              <span>₱${pagibigContribution.toFixed(2)}</span>
-            </div>
-            <div class="pay-row">
-              <span>Pag-IBIG Loan:</span>
-              <span>₱${pagibigLoan.toFixed(2)}</span>
-            </div>
-            <div class="pay-row">
-              <span>Advances:</span>
-              <span>₱${advances.toFixed(2)}</span>
-            </div>
-            <div class="pay-row">
-              <span>Others:</span>
-              <span>₱${otherDeductions.toFixed(2)}</span>
-            </div>
-            <div class="pay-row total-row">
-              <span>Total Deductions:</span>
-              <span>₱${totalDeductions.toFixed(2)}</span>
-            </div>
-          </div>
-
-          <div class="section">
-            <div class="section-title">NET PAY</div>
-            <div class="pay-row total-row">
-              <span>Net Pay:</span>
-              <span>₱${netPay.toFixed(2)}</span>
-            </div>
-          </div>
-
-          <div class="signatures">
-            <div>
-              <div>Prepared by:</div>
-              <div class="signature-line">_______________________</div>
-            </div>
-            <div>
-              <div>Received by:</div>
-              <div class="signature-line">_______________________</div>
-            </div>
-          </div>
-
-          <div class="date-line">
-            <div>Date:</div>
-            <div class="signature-line">_______________________</div>
-          </div>
-        </body>
-        </html>
-      `;
-
-      // Download the file
-      const blob = new Blob([payslipHTML], { type: 'text/html' });
+      const response = await apiRequest('POST', '/api/payslips/generate-pdf', {
+        payslip_data: payslipData,
+        format: 'pdf',
+        include_qr: true
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to generate PDF');
+      }
+      
+      const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `payslip_${payslipData.payslip.employeeName}_${format(new Date(payslipData.payslip.period), "yyyy-MM-dd")}.html`;
+      link.download = `${payslipData.payslip_id}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-
+      
       toast({
-        title: "Payslip Downloaded",
-        description: "Payslip has been downloaded successfully",
+        title: "PDF Downloaded",
+        description: "Your payslip has been downloaded successfully",
       });
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Failed to download payslip",
+        description: error.message || "Failed to download PDF",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDownloadingPDF(false);
+    }
+  };
+
+  const handleQuickDownload = async (entry: PayrollEntry) => {
+    try {
+      // First fetch the payslip data
+      const response = await apiRequest('GET', `/api/payroll/payslip/${entry.id}`);
+      const data: PayslipResponse = await response.json();
+      const transformedData = transformToPayslipData(data, entry);
+      
+      // Then generate PDF
+      const pdfResponse = await apiRequest('POST', '/api/payslips/generate-pdf', {
+        payslip_data: transformedData,
+        format: 'pdf',
+        include_qr: true
+      });
+      
+      if (!pdfResponse.ok) {
+        throw new Error('Failed to generate PDF');
+      }
+      
+      const blob = await pdfResponse.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${transformedData.payslip_id}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      toast({
+        title: "PDF Downloaded",
+        description: "Your payslip has been downloaded successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to download PDF",
         variant: "destructive",
       });
     }
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background pb-24 mobile-app">
       <MobileHeader
         title="Payroll"
         subtitle="Payment history"
@@ -310,63 +385,66 @@ export default function MobilePayroll() {
       />
 
       {/* Main Content */}
-      <div className="p-4 space-y-4">
+      <div className="p-5 space-y-5">
         {/* Summary Card */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <DollarSign className="h-5 w-5" />
+        <Card className="border-2 rounded-2xl overflow-hidden">
+          <CardHeader className="pb-4 bg-gradient-to-r from-emerald-500/10 to-transparent">
+            <CardTitle className="text-xl font-bold flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center">
+                <DollarSign className="h-6 w-6 text-emerald-500" />
+              </div>
               Payroll Summary
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-green-600">
+          <CardContent className="px-5 pb-5">
+            <div className="grid grid-cols-2 gap-6">
+              <div className="text-center p-5 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl">
+                <p className="text-3xl font-bold text-emerald-600">
                   ₱{payrollEntries.reduce((sum, entry) =>
-                    sum + parseFloat(String(entry.netPay)), 0).toFixed(2)}
+                    sum + parseFloat(String(entry.netPay)), 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
                 </p>
-                <p className="text-sm text-muted-foreground">Total Earned</p>
+                <p className="text-base text-muted-foreground mt-2">Total Earned</p>
               </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold">
+              <div className="text-center p-5 bg-violet-50 dark:bg-violet-950/30 rounded-xl">
+                <p className="text-3xl font-bold text-violet-600">
                   {payrollEntries.reduce((sum, entry) =>
                     sum + parseFloat(String(entry.totalHours)), 0).toFixed(1)}h
                 </p>
-                <p className="text-sm text-muted-foreground">Hours Worked</p>
+                <p className="text-base text-muted-foreground mt-2">Hours Worked</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Payroll Entries */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Payment History</CardTitle>
-            <CardDescription>
+        <Card className="border-2 rounded-2xl">
+          <CardHeader className="pb-4 px-5 pt-5">
+            <CardTitle className="text-xl font-bold">Payment History</CardTitle>
+            <CardDescription className="text-base">
               Your recent payroll entries
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4 px-5 pb-5">
             {isLoading ? (
-              <div className="text-center py-6">
-                <p className="text-muted-foreground">Loading payroll data...</p>
+              <div className="text-center py-8">
+                <div className="w-10 h-10 border-3 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                <p className="text-lg text-muted-foreground">Loading payroll data...</p>
               </div>
             ) : payrollEntries.length === 0 ? (
-              <div className="text-center py-6 text-muted-foreground">
-                <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">No payroll entries yet</p>
-                <p className="text-xs">Payroll entries will appear here after processing</p>
+              <div className="text-center py-10 text-muted-foreground">
+                <Clock className="h-14 w-14 mx-auto mb-4 opacity-30" />
+                <p className="text-lg font-medium">No payroll entries yet</p>
+                <p className="text-base mt-2">Payroll entries will appear here after processing</p>
               </div>
             ) : (
               payrollEntries.map((entry) => (
-                <div key={entry.id} className="p-4 border rounded-lg">
-                  <div className="flex items-start justify-between mb-3">
+                <div key={entry.id} className="p-5 border-2 rounded-xl bg-secondary/20">
+                  <div className="flex items-start justify-between mb-4">
                     <div>
-                      <p className="font-medium">
+                      <p className="text-lg font-bold">
                         {format(parseISO(entry.createdAt), "MMMM d, yyyy")}
                       </p>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-base text-muted-foreground mt-1">
                         Pay Period
                       </p>
                     </div>
@@ -375,41 +453,50 @@ export default function MobilePayroll() {
                         entry.status === 'paid' ? 'default' :
                         entry.status === 'approved' ? 'secondary' : 'outline'
                       }
+                      className="text-base px-4 py-1"
                     >
-                      {entry.status}
+                      {entry.status.charAt(0).toUpperCase() + entry.status.slice(1)}
                     </Badge>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 mb-3">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Hours</p>
-                      <p className="font-semibold">
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div className="p-4 bg-background rounded-xl">
+                      <p className="text-base text-muted-foreground">Hours</p>
+                      <p className="text-2xl font-bold mt-1">
                         {parseFloat(String(entry.totalHours)).toFixed(1)}h
                       </p>
                     </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Gross Pay</p>
-                      <p className="font-semibold">
-                        ₱{parseFloat(String(entry.grossPay)).toFixed(2)}
+                    <div className="p-4 bg-background rounded-xl">
+                      <p className="text-base text-muted-foreground">Gross Pay</p>
+                      <p className="text-2xl font-bold mt-1">
+                        ₱{parseFloat(String(entry.grossPay)).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between pt-3 border-t">
+                  <div className="flex items-center justify-between pt-4 border-t-2">
                     <div>
-                      <p className="text-sm text-muted-foreground">Net Pay</p>
-                      <p className="text-xl font-bold text-green-600">
-                        ₱{parseFloat(String(entry.netPay)).toFixed(2)}
+                      <p className="text-base text-muted-foreground">Net Pay</p>
+                      <p className="text-3xl font-bold text-emerald-600">
+                        ₱{parseFloat(String(entry.netPay)).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
                       </p>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleDownloadPayslip(entry.id)}
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      Payslip
-                    </Button>
+                    <div className="flex gap-3">
+                      <Button
+                        className="h-12 px-5 text-base font-semibold rounded-xl"
+                        onClick={() => handleViewPayslip(entry)}
+                      >
+                        <Eye className="h-5 w-5 mr-2" />
+                        View
+                      </Button>
+                      <Button
+                        className="h-12 w-12 rounded-xl"
+                        variant="outline"
+                        onClick={() => handleQuickDownload(entry)}
+                      >
+                        <Download className="h-5 w-5" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))
@@ -417,6 +504,58 @@ export default function MobilePayroll() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Digital Payslip Modal with PayslipViewer */}
+      <Dialog open={payslipDialogOpen} onOpenChange={(open) => {
+        setPayslipDialogOpen(open);
+        if (!open) {
+          setSelectedPayslipId(null);
+          setPayslipData(null);
+        }
+      }}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
+          <DialogHeader className="p-6 pb-0 flex flex-row items-center justify-between">
+            <DialogTitle className="text-2xl font-bold flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
+                <FileText className="h-6 w-6 text-primary" />
+              </div>
+              Digital Payslip
+            </DialogTitle>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-xl"
+              onClick={() => setPayslipDialogOpen(false)}
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          </DialogHeader>
+          <div className="p-6">
+            {isLoadingPayslip ? (
+              <div className="flex items-center justify-center py-20">
+                <div className="text-center">
+                  <Loader2 className="w-16 h-16 text-primary animate-spin mx-auto mb-4" />
+                  <p className="text-lg text-muted-foreground">Loading payslip...</p>
+                </div>
+              </div>
+            ) : payslipData ? (
+              <PayslipViewer
+                data={payslipData}
+                onDownloadPDF={handleDownloadPDF}
+                showActions={true}
+                isLoading={isDownloadingPDF}
+              />
+            ) : (
+              <div className="flex items-center justify-center py-20">
+                <div className="text-center">
+                  <FileText className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
+                  <p className="text-lg text-muted-foreground">Failed to load payslip data</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <MobileBottomNav />
     </div>

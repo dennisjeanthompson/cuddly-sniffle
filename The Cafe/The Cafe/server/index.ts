@@ -1,12 +1,22 @@
 import express, { type Request, Response, NextFunction } from "express";
+import cors from "cors";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { networkInterfaces } from "os";
-import { initializeDatabase, createAdminAccount, seedDeductionRates, seedPhilippineHolidays } from "./init-db";
+import { initializeDatabase, createAdminAccount, seedDeductionRates, seedPhilippineHolidays, seedSampleUsers } from "./init-db";
 import { promptDatabaseChoice, deleteDatabaseFile, displayDatabaseStats, loadSampleData } from "./db-manager";
 import { recreateConnection } from "./db";
 
 const app = express();
+
+// CORS configuration for GitHub Codespaces
+app.use(cors({
+  origin: true,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
@@ -85,6 +95,9 @@ app.use((req, res, next) => {
   // Create admin account if it doesn't exist
   await createAdminAccount();
 
+  // Seed sample users (manager + employees)
+  await seedSampleUsers();
+
   // Seed default deduction rates if table is empty
   await seedDeductionRates();
 
@@ -139,7 +152,7 @@ app.use((req, res, next) => {
 
   server.listen({
     port,
-    host: "localhost",  // Changed from localhost to allow network access
+    host: "0.0.0.0",  // Bind to all interfaces for Codespaces/Docker
     //reusePort: true,
   }, () => {
     const localIP = getLocalNetworkIP();

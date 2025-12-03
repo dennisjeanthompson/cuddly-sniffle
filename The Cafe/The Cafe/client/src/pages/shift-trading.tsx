@@ -174,17 +174,31 @@ export default function ShiftTrading() {
   });
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-2xl font-bold text-foreground">Shift Trading</h2>
-          <p className="text-muted-foreground">Exchange shifts with your colleagues</p>
-        </div>
+    <div className="p-6 space-y-6 animate-fade-in">
+      {/* Hero Header */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-500/10 via-primary/5 to-background border border-violet-500/20 p-6 lg:p-8">
+        {/* Background decoration */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-violet-500/20 to-transparent rounded-full -translate-y-32 translate-x-32 blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-primary/10 to-transparent rounded-full translate-y-24 -translate-x-24 blur-3xl" />
+        
+        <div className="relative flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500/20 to-violet-500/5 flex items-center justify-center">
+              <ArrowRightLeft className="h-7 w-7 text-violet-500" />
+            </div>
+            <div>
+              <h2 className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+                Shift Trading
+              </h2>
+              <p className="text-muted-foreground">Exchange shifts with your colleagues seamlessly</p>
+            </div>
+          </div>
 
-        <Button data-testid="button-post-shift" onClick={() => setIsPostDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Post Available Shift
-        </Button>
+          <Button className="btn-premium text-primary-foreground" data-testid="button-post-shift" onClick={() => setIsPostDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Post Available Shift
+          </Button>
+        </div>
       </div>
 
       {/* Post Shift Dialog */}

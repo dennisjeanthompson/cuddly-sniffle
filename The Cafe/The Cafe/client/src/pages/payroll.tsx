@@ -1,14 +1,36 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, DollarSign, Clock, FileText, Download, Calculator, Shield, AlertCircle, CheckCircle } from "lucide-react";
+import { 
+  Calendar, 
+  DollarSign, 
+  Clock, 
+  FileText, 
+  Download, 
+  Calculator, 
+  Shield, 
+  Eye,
+  TrendingUp,
+  Coffee,
+  Sparkles,
+  ChevronRight,
+  CheckCircle2,
+  Clock3,
+  Wallet,
+  Receipt,
+  ArrowDownToLine,
+  BadgeCheck,
+  CalendarDays,
+  History,
+  PiggyBank,
+  Banknote
+} from "lucide-react";
 import { format } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { getCurrentUser } from "@/lib/auth";
+import { DigitalPayslip } from "@/components/payroll/digital-payslip";
+import { cn } from "@/lib/utils";
 
 interface PayrollEntry {
   id: string;
@@ -22,7 +44,6 @@ interface PayrollEntry {
   netPay: number | string;
   status: string;
   createdAt: string;
-  // Blockchain fields
   blockchainHash?: string;
   blockNumber?: number;
   transactionHash?: string;
@@ -42,6 +63,9 @@ interface PayrollPeriod {
 export default function Payroll() {
   const currentUser = getCurrentUser();
   const { toast } = useToast();
+  const [selectedPayslipId, setSelectedPayslipId] = useState<string | null>(null);
+  const [payslipDialogOpen, setPayslipDialogOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'current' | 'history' | 'summary'>('current');
 
   // Fetch payroll entries for current user
   const { data: payrollData, isLoading: payrollLoading } = useQuery({
@@ -60,39 +84,6 @@ export default function Payroll() {
       return response.json();
     },
   });
-
-  // Handle blockchain operations
-  const handleBlockchainStore = async (entryId: string) => {
-    try {
-      await apiRequest("POST", "/api/blockchain/payroll/store", { payrollEntryId: entryId });
-      toast({
-        title: "Success",
-        description: "Payroll record stored on blockchain",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to store on blockchain",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleBlockchainVerify = async (entryId: string) => {
-    try {
-      await apiRequest("POST", "/api/blockchain/payroll/verify", { payrollEntryId: entryId });
-      toast({
-        title: "Success",
-        description: "Payroll record verified against blockchain",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to verify blockchain record",
-        variant: "destructive",
-      });
-    }
-  };
 
   // Helper to generate breakdown HTML from payslip.breakdown
   const generateBreakdownHTML = (breakdown: any): string => {
@@ -154,7 +145,6 @@ export default function Payroll() {
       const response = await apiRequest('GET', `/api/payroll/payslip/${entryId}`);
       const payslipData = await response.json();
 
-      // Create Philippine-format payslip for download
       const payslip = payslipData.payslip;
       const breakdown = payslip.breakdown;
       const basicPay = parseFloat(payslip.basicPay || payslip.grossPay || 0);
@@ -181,131 +171,121 @@ export default function Payroll() {
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <title>Payslip - ${payslip.employeeName}</title>
           <style>
-            body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 40px 20px; }
-            .header { text-align: center; margin-bottom: 20px; }
-            .header h1 { margin: 0; font-size: 24px; }
-            .header p { margin: 5px 0; font-size: 14px; }
-            .employee-name { margin: 20px 0; padding: 10px; border-bottom: 1px solid #333; }
-            .section { margin: 20px 0; }
-            .section-title { font-weight: bold; margin-bottom: 10px; text-decoration: underline; }
-            .pay-row { display: flex; justify-content: space-between; padding: 5px 0; }
-            .pay-row.indent { padding-left: 20px; }
-            .total-row { border-top: 2px solid #333; border-bottom: 2px double #333; padding: 10px 0; font-weight: bold; font-size: 1.1em; }
-            .signatures { margin-top: 60px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
-            .signature-line { border-top: 1px solid #333; padding-top: 5px; text-align: center; }
-            .date-line { margin-top: 40px; }
-            .date-line .signature-line { display: inline-block; width: 300px; }
-            .breakdown-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
-            .breakdown-table th, .breakdown-table td { border: 1px solid #ccc; padding: 4px 6px; text-align: right; }
-            .breakdown-table th { background: #f5f5f5; font-weight: bold; }
+            body { font-family: 'Segoe UI', Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 40px 20px; background: #fafafa; }
+            .payslip-card { background: white; border-radius: 16px; padding: 32px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+            .header { text-align: center; margin-bottom: 24px; padding-bottom: 20px; border-bottom: 2px solid #f0f0f0; }
+            .header h1 { margin: 0; font-size: 28px; color: #1a1a1a; }
+            .header .period { margin: 8px 0 0; font-size: 14px; color: #666; }
+            .employee-name { margin: 20px 0; padding: 16px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 12px; }
+            .section { margin: 24px 0; }
+            .section-title { font-weight: 600; margin-bottom: 12px; color: #333; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; }
+            .pay-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+            .pay-row:last-child { border-bottom: none; }
+            .pay-row.indent { padding-left: 16px; color: #666; }
+            .total-row { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 16px; border-radius: 12px; margin-top: 16px; font-weight: 600; font-size: 1.1em; }
+            .signatures { margin-top: 48px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+            .signature-line { border-top: 1px solid #333; padding-top: 8px; text-align: center; margin-top: 48px; }
+            .breakdown-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 12px; }
+            .breakdown-table th, .breakdown-table td { border: 1px solid #e0e0e0; padding: 8px; text-align: right; }
+            .breakdown-table th { background: #f5f5f5; font-weight: 600; }
             .breakdown-table td:first-child, .breakdown-table th:first-child { text-align: left; }
-            .breakdown-table td:nth-child(2), .breakdown-table th:nth-child(2) { text-align: left; }
           </style>
         </head>
         <body>
-          <div class="header">
-            <h1>The Café</h1>
-            <p>Payslip Period: ${format(new Date(payslip.period), "MMMM d, yyyy")}</p>
-          </div>
+          <div class="payslip-card">
+            <div class="header">
+              <h1>☕ The Café</h1>
+              <p class="period">Payslip Period: ${format(new Date(payslip.period), "MMMM d, yyyy")}</p>
+            </div>
 
-          <div class="employee-name">
-            <strong>Name of Employee:</strong> ${payslip.employeeName}
-          </div>
+            <div class="employee-name">
+              <strong>Employee:</strong> ${payslip.employeeName}
+            </div>
 
-          <div class="section">
-            <div class="section-title">BASIC PAY</div>
-            <div class="pay-row">
-              <span>Basic Pay:</span>
-              <span>₱${basicPay.toFixed(2)}</span>
+            <div class="section">
+              <div class="section-title">Earnings</div>
+              <div class="pay-row">
+                <span>Basic Pay</span>
+                <span>₱${basicPay.toFixed(2)}</span>
+              </div>
+              <div class="pay-row indent">
+                <span>Holiday Premium</span>
+                <span>₱${holidayPay.toFixed(2)}</span>
+              </div>
+              <div class="pay-row indent">
+                <span>Overtime Pay</span>
+                <span>₱${overtimePay.toFixed(2)}</span>
+              </div>
+              <div class="pay-row" style="font-weight: 600; background: #f8f9fa; padding: 12px; border-radius: 8px;">
+                <span>Gross Pay</span>
+                <span>₱${grossPay.toFixed(2)}</span>
+              </div>
             </div>
-            <div class="pay-row indent">
-              <span>Add: Holiday:</span>
-              <span>₱${holidayPay.toFixed(2)}</span>
-            </div>
-            <div class="pay-row indent">
-              <span>Add: Overtime:</span>
-              <span>₱${overtimePay.toFixed(2)}</span>
-            </div>
-          </div>
 
-          <div class="section">
-            <div class="section-title">GROSS PAY</div>
-            <div class="pay-row">
-              <span>Gross Pay:</span>
-              <span>₱${grossPay.toFixed(2)}</span>
-            </div>
-          </div>
+            ${breakdownHTML}
 
-          ${breakdownHTML}
+            <div class="section">
+              <div class="section-title">Deductions</div>
+              <div class="pay-row">
+                <span>Withholding Tax</span>
+                <span>₱${withholdingTax.toFixed(2)}</span>
+              </div>
+              <div class="pay-row">
+                <span>SSS Contribution</span>
+                <span>₱${sssContribution.toFixed(2)}</span>
+              </div>
+              <div class="pay-row">
+                <span>SSS Loan</span>
+                <span>₱${sssLoan.toFixed(2)}</span>
+              </div>
+              <div class="pay-row">
+                <span>PhilHealth</span>
+                <span>₱${philHealthContribution.toFixed(2)}</span>
+              </div>
+              <div class="pay-row">
+                <span>Pag-IBIG Contribution</span>
+                <span>₱${pagibigContribution.toFixed(2)}</span>
+              </div>
+              <div class="pay-row">
+                <span>Pag-IBIG Loan</span>
+                <span>₱${pagibigLoan.toFixed(2)}</span>
+              </div>
+              <div class="pay-row">
+                <span>Advances</span>
+                <span>₱${advances.toFixed(2)}</span>
+              </div>
+              <div class="pay-row">
+                <span>Other Deductions</span>
+                <span>₱${otherDeductions.toFixed(2)}</span>
+              </div>
+              <div class="pay-row" style="font-weight: 600; background: #fef2f2; padding: 12px; border-radius: 8px; color: #dc2626;">
+                <span>Total Deductions</span>
+                <span>-₱${totalDeductions.toFixed(2)}</span>
+              </div>
+            </div>
 
-          <div class="section">
-            <div class="section-title">DEDUCTIONS</div>
-            <div class="pay-row">
-              <span>Withholding Tax:</span>
-              <span>₱${withholdingTax.toFixed(2)}</span>
+            <div class="total-row">
+              <div style="display: flex; justify-content: space-between;">
+                <span>NET PAY</span>
+                <span>₱${netPay.toFixed(2)}</span>
+              </div>
             </div>
-            <div class="pay-row">
-              <span>SSS Contribution:</span>
-              <span>₱${sssContribution.toFixed(2)}</span>
-            </div>
-            <div class="pay-row">
-              <span>SSS Loan:</span>
-              <span>₱${sssLoan.toFixed(2)}</span>
-            </div>
-            <div class="pay-row">
-              <span>PhilHealth:</span>
-              <span>₱${philHealthContribution.toFixed(2)}</span>
-            </div>
-            <div class="pay-row">
-              <span>Pag-IBIG Contribution:</span>
-              <span>₱${pagibigContribution.toFixed(2)}</span>
-            </div>
-            <div class="pay-row">
-              <span>Pag-IBIG Loan:</span>
-              <span>₱${pagibigLoan.toFixed(2)}</span>
-            </div>
-            <div class="pay-row">
-              <span>Advances:</span>
-              <span>₱${advances.toFixed(2)}</span>
-            </div>
-            <div class="pay-row">
-              <span>Others:</span>
-              <span>₱${otherDeductions.toFixed(2)}</span>
-            </div>
-            <div class="pay-row total-row">
-              <span>Total Deductions:</span>
-              <span>₱${totalDeductions.toFixed(2)}</span>
-            </div>
-          </div>
 
-          <div class="section">
-            <div class="section-title">NET PAY</div>
-            <div class="pay-row total-row">
-              <span>Net Pay:</span>
-              <span>₱${netPay.toFixed(2)}</span>
+            <div class="signatures">
+              <div>
+                <p style="margin-bottom: 4px; color: #666; font-size: 12px;">Prepared by:</p>
+                <div class="signature-line">Authorized Signatory</div>
+              </div>
+              <div>
+                <p style="margin-bottom: 4px; color: #666; font-size: 12px;">Received by:</p>
+                <div class="signature-line">Employee Signature</div>
+              </div>
             </div>
-          </div>
-
-          <div class="signatures">
-            <div>
-              <div>Prepared by:</div>
-              <div class="signature-line">_______________________</div>
-            </div>
-            <div>
-              <div>Received by:</div>
-              <div class="signature-line">_______________________</div>
-            </div>
-          </div>
-
-          <div class="date-line">
-            <div>Date:</div>
-            <div class="signature-line">_______________________</div>
           </div>
         </body>
         </html>
       `;
 
-      // Create and download the file
       const blob = new Blob([payslipHTML], { type: 'text/html' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -317,8 +297,8 @@ export default function Payroll() {
       URL.revokeObjectURL(url);
 
       toast({
-        title: "Payslip Downloaded",
-        description: "Payslip has been downloaded successfully",
+        title: "✓ Downloaded",
+        description: "Your payslip has been saved",
       });
     } catch (error: any) {
       toast({
@@ -331,6 +311,7 @@ export default function Payroll() {
 
   const payrollEntries = payrollData?.entries || [];
   const currentPeriodData = currentPeriod?.period;
+  const latestEntry = payrollEntries[0];
 
   // Calculate summary statistics
   const totalGrossPay = payrollEntries.reduce((sum: number, entry: PayrollEntry) => {
@@ -350,346 +331,450 @@ export default function Payroll() {
     return sum + value;
   }, 0);
 
+  // Get period display
+  const getPeriodDisplay = () => {
+    if (currentPeriodData) {
+      return `${format(new Date(currentPeriodData.startDate), "MMM d")} – ${format(new Date(currentPeriodData.endDate), "d, yyyy")}`;
+    }
+    if (latestEntry) {
+      return format(new Date(latestEntry.createdAt), "MMMM d, yyyy");
+    }
+    return format(new Date(), "MMMM yyyy");
+  };
+
   if (payrollLoading) {
     return (
-      <div className="p-6 space-y-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-muted rounded w-1/4"></div>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-32 bg-muted rounded"></div>
-            ))}
-          </div>
+      <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 rounded-full border-4 border-emerald-500/30 border-t-emerald-500 animate-spin" />
+          <p className="text-slate-400 text-sm">Loading your payroll...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-foreground">Payroll Summary</h2>
-          <p className="text-muted-foreground">
-            View your pay details, cutoff periods, and computation breakdown
+    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 text-white pb-8">
+      {/* Hero Section */}
+      <div className="relative overflow-hidden">
+        {/* Background decorations */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-b from-emerald-500/10 via-teal-500/5 to-transparent rounded-full blur-3xl" />
+        <div className="absolute top-20 right-0 w-64 h-64 bg-gradient-to-br from-amber-500/10 to-orange-500/5 rounded-full blur-3xl" />
+        
+        <div className="relative px-5 pt-8 pb-6">
+          {/* Greeting */}
+          <div className="flex items-center gap-2 mb-2">
+            <Coffee className="h-5 w-5 text-amber-400" />
+            <span className="text-sm text-slate-400">Hi, {currentUser?.firstName || 'there'}!</span>
+          </div>
+          
+          {/* Main Hero Text */}
+          <h1 className="text-2xl font-bold mb-1">Your Latest Payslip</h1>
+          <p className="text-slate-400 text-sm flex items-center gap-2">
+            <CalendarDays className="h-4 w-4" />
+            {getPeriodDisplay()}
           </p>
+          
+          {/* Net Pay Display */}
+          {latestEntry ? (
+            <div className="mt-6">
+              <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Take Home Pay</p>
+              <div className="flex items-baseline gap-2">
+                <span className="text-5xl font-bold text-emerald-400 tracking-tight">
+                  ₱{parseFloat(String(latestEntry.netPay || 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </span>
+                {latestEntry.status === 'paid' && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-500/20 text-emerald-400 text-xs font-medium rounded-full">
+                    <CheckCircle2 className="h-3 w-3" />
+                    Paid
+                  </span>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="mt-6 p-6 rounded-2xl bg-slate-800/50 border border-slate-700/50 text-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center">
+                <Coffee className="h-8 w-8 text-amber-400" />
+              </div>
+              <p className="text-slate-300 font-medium">No payslip yet</p>
+              <p className="text-slate-500 text-sm mt-1">Your first payslip will appear here</p>
+            </div>
+          )}
         </div>
       </div>
 
-      <Tabs defaultValue="current" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="current">
-            <Calendar className="h-4 w-4 mr-2" />
-            Current Period
-          </TabsTrigger>
-          <TabsTrigger value="history">
-            <FileText className="h-4 w-4 mr-2" />
-            Pay History
-          </TabsTrigger>
-          <TabsTrigger value="summary">
-            <Calculator className="h-4 w-4 mr-2" />
+      {/* Quick Metrics Cards */}
+      {payrollEntries.length > 0 && (
+        <div className="px-5 mb-6">
+          <div className="grid grid-cols-3 gap-3">
+            <MetricCard 
+              icon={Wallet} 
+              label="Total 2025" 
+              value={`₱${(totalNetPay / 1000).toFixed(1)}k`}
+              color="emerald"
+            />
+            <MetricCard 
+              icon={Clock3} 
+              label="Hours" 
+              value={`${totalHours.toFixed(0)}h`}
+              color="blue"
+            />
+            <MetricCard 
+              icon={Receipt} 
+              label="Tax" 
+              value={`₱${(totalDeductions * 0.3).toFixed(0)}`}
+              color="amber"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Segmented Tab Navigation */}
+      <div className="px-5 mb-6">
+        <div className="flex p-1 bg-slate-800/80 backdrop-blur-sm rounded-xl border border-slate-700/50">
+          <TabButton 
+            active={activeTab === 'current'} 
+            onClick={() => setActiveTab('current')}
+            icon={Banknote}
+          >
+            Current
+          </TabButton>
+          <TabButton 
+            active={activeTab === 'history'} 
+            onClick={() => setActiveTab('history')}
+            icon={History}
+          >
+            History
+          </TabButton>
+          <TabButton 
+            active={activeTab === 'summary'} 
+            onClick={() => setActiveTab('summary')}
+            icon={PiggyBank}
+          >
             Summary
-          </TabsTrigger>
-        </TabsList>
+          </TabButton>
+        </div>
+      </div>
 
-        <TabsContent value="current">
-          <div className="grid gap-6">
-            {/* Current Period Info */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Calendar className="h-5 w-5 text-primary mr-2" />
-                  Current Payroll Period
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {currentPeriodData ? (
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Start Date</p>
-                      <p className="text-lg font-semibold">
-                        {format(new Date(currentPeriodData.startDate), "MMM d, yyyy")}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">End Date</p>
-                      <p className="text-lg font-semibold">
-                        {format(new Date(currentPeriodData.endDate), "MMM d, yyyy")}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Status</p>
-                      <Badge
-                        variant={currentPeriodData.status === 'open' ? 'default' : 'secondary'}
-                        className="text-sm"
-                      >
-                        {currentPeriodData.status}
-                      </Badge>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground">No active payroll period</p>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Current Period Summary */}
-            {payrollEntries.length > 0 && (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Hours</CardTitle>
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{totalHours.toFixed(1)}</div>
-                    <p className="text-xs text-muted-foreground">This period</p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Gross Pay</CardTitle>
-                    <DollarSign className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">₱{totalGrossPay.toFixed(2)}</div>
-                    <p className="text-xs text-muted-foreground">Before deductions</p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Deductions</CardTitle>
-                    <Calculator className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-red-600">-₱{totalDeductions.toFixed(2)}</div>
-                    <p className="text-xs text-muted-foreground">Taxes & other deductions</p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Net Pay</CardTitle>
-                    <DollarSign className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-green-600">₱{totalNetPay.toFixed(2)}</div>
-                    <p className="text-xs text-muted-foreground">Take home pay</p>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-
-            {/* Pay Breakdown */}
-            {payrollEntries.map((entry: PayrollEntry) => (
-              <Card key={entry.id}>
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <span>Pay Period: {format(new Date(entry.createdAt), "MMM d, yyyy")}</span>
-                    <Badge variant={entry.status === 'paid' ? 'default' : 'secondary'}>
-                      {entry.status}
-                    </Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-sm text-muted-foreground">Regular Hours:</span>
-                        <span className="font-medium">{String(entry.regularHours)}h</span>
+      {/* Tab Content */}
+      <div className="px-5">
+        {activeTab === 'current' && (
+          <div className="space-y-4">
+            {/* Current Payslip Card */}
+            {latestEntry && (
+              <div className="rounded-2xl bg-gradient-to-br from-slate-800/90 to-slate-800/50 border border-slate-700/50 overflow-hidden backdrop-blur-sm">
+                <div className="p-5">
+                  <div className="flex items-center justify-between mb-5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 flex items-center justify-center">
+                        <FileText className="h-5 w-5 text-emerald-400" />
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm text-muted-foreground">Overtime Hours:</span>
-                        <span className="font-medium">{String(entry.overtimeHours)}h</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm text-muted-foreground">Total Hours:</span>
-                        <span className="font-medium">{String(entry.totalHours)}h</span>
+                      <div>
+                        <p className="font-medium text-white">Payslip Details</p>
+                        <p className="text-xs text-slate-400">{parseFloat(String(latestEntry.totalHours)).toFixed(1)} hours worked</p>
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-sm text-muted-foreground">Gross Pay:</span>
-                        <span className="font-medium">₱{parseFloat(String(entry.grossPay || 0)).toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm text-muted-foreground">Deductions:</span>
-                        <span className="font-medium text-red-600">-₱{parseFloat(String(entry.deductions || 0)).toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between font-semibold">
-                        <span>Net Pay:</span>
-                        <span className="text-green-600">₱{parseFloat(String(entry.netPay || 0)).toFixed(2)}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-4 pt-4 border-t">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        {/* Blockchain verification badge */}
-                        {entry.verified ? (
-                          <Badge variant="default" className="bg-green-100 text-green-800">
-                            <Shield className="h-3 w-3 mr-1" />
-                            Blockchain Verified
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary">
-                            <AlertCircle className="h-3 w-3 mr-1" />
-                            Not Verified
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDownloadPayslip(entry.id)}
-                        >
-                          <Download className="h-4 w-4 mr-2" />
-                          Download Payslip
-                        </Button>
-                        {!entry.verified && (
-                          <Button
-                            size="sm"
-                            onClick={() => handleBlockchainStore(entry.id)}
-                          >
-                            <Shield className="h-4 w-4 mr-2" />
-                            Store on Blockchain
-                          </Button>
-                        )}
-                        {entry.verified && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleBlockchainVerify(entry.id)}
-                          >
-                            <CheckCircle className="h-4 w-4 mr-2" />
-                            Verify
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                    {entry.blockchainHash && (
-                      <div className="mt-3 p-3 bg-green-50 rounded-lg border border-green-200">
-                        <div className="flex items-center space-x-2 text-sm">
-                          <Shield className="h-4 w-4 text-green-600" />
-                          <span className="font-medium text-green-800">Blockchain Record</span>
-                        </div>
-                        <div className="mt-1 text-xs text-green-700">
-                          <p>Hash: {entry.blockchainHash.substring(0, 16)}...</p>
-                          <p>Block: {entry.blockNumber}</p>
-                          <p>Transaction: {entry.transactionHash?.substring(0, 16)}...</p>
-                        </div>
+                    {latestEntry.verified && (
+                      <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
+                        <Shield className="h-3.5 w-3.5 text-emerald-400" />
+                        <span className="text-xs text-emerald-400 font-medium">Verified</span>
                       </div>
                     )}
                   </div>
-                </CardContent>
-              </Card>
-            ))}
 
-            {payrollEntries.length === 0 && (
-              <Card>
-                <CardContent className="p-8 text-center">
-                  <p className="text-muted-foreground">No payroll data available for the current period</p>
-                </CardContent>
-              </Card>
+                  {/* Pay Breakdown */}
+                  <div className="space-y-3">
+                    <PayRow label="Gross Pay" value={parseFloat(String(latestEntry.grossPay))} />
+                    <PayRow label="Regular Hours" value={parseFloat(String(latestEntry.regularHours))} suffix="h" subdued />
+                    <PayRow label="Overtime Hours" value={parseFloat(String(latestEntry.overtimeHours))} suffix="h" subdued />
+                    <div className="h-px bg-slate-700/50 my-2" />
+                    <PayRow label="Deductions" value={-parseFloat(String(latestEntry.deductions))} negative />
+                    <div className="h-px bg-slate-700/50 my-2" />
+                    <div className="flex items-center justify-between py-2">
+                      <span className="font-semibold text-white">Net Pay</span>
+                      <span className="text-xl font-bold text-emerald-400">
+                        ₱{parseFloat(String(latestEntry.netPay)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex border-t border-slate-700/50">
+                  <button 
+                    onClick={() => {
+                      setSelectedPayslipId(latestEntry.id);
+                      setPayslipDialogOpen(true);
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 py-4 text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-700/30 transition-colors"
+                  >
+                    <Eye className="h-4 w-4" />
+                    View Full Payslip
+                  </button>
+                  <div className="w-px bg-slate-700/50" />
+                  <button 
+                    onClick={() => handleDownloadPayslip(latestEntry.id)}
+                    className="flex-1 flex items-center justify-center gap-2 py-4 text-sm font-medium text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 transition-colors"
+                  >
+                    <ArrowDownToLine className="h-4 w-4" />
+                    Download PDF
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Empty State */}
+            {!latestEntry && (
+              <EmptyState 
+                icon={Coffee}
+                title="No payslips yet"
+                description="Once you complete your first pay period, your payslip will appear here."
+              />
             )}
           </div>
-        </TabsContent>
+        )}
 
-        <TabsContent value="history">
-          <Card>
-            <CardHeader>
-              <CardTitle>Payroll History</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {payrollEntries.map((entry: PayrollEntry) => (
-                  <div key={entry.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
-                      <p className="font-medium">
-                        Period ending {format(new Date(entry.createdAt), "MMM d, yyyy")}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {String(entry.totalHours)}h • ₱{parseFloat(String(entry.netPay || 0)).toFixed(2)} net pay
-                      </p>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Badge variant={entry.status === 'paid' ? 'default' : 'secondary'}>
-                        {entry.status}
-                      </Badge>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDownloadPayslip(entry.id)}
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-
-                {payrollEntries.length === 0 && (
-                  <p className="text-center text-muted-foreground py-8">
-                    No payroll history available
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="summary">
-          <div className="grid gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Year-to-Date Summary</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-primary">{totalHours.toFixed(1)}</p>
-                    <p className="text-sm text-muted-foreground">Total Hours Worked</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-green-600">₱{totalNetPay.toFixed(2)}</p>
-                    <p className="text-sm text-muted-foreground">Total Net Pay</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-muted-foreground">
-                      {payrollEntries.length}
-                    </p>
-                    <p className="text-sm text-muted-foreground">Pay Periods</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Payroll Breakdown</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex justify-between">
-                    <span>Gross Pay</span>
-                    <span className="font-medium">₱{totalGrossPay.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-red-600">
-                    <span>Deductions</span>
-                    <span>-₱{totalDeductions.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between font-semibold text-lg border-t pt-2">
-                    <span>Net Pay</span>
-                    <span className="text-green-600">₱{totalNetPay.toFixed(2)}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+        {activeTab === 'history' && (
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium text-slate-400 mb-4">Past Payslips</h3>
+            
+            {payrollEntries.length > 0 ? (
+              payrollEntries.map((entry: PayrollEntry, index: number) => (
+                <HistoryItem 
+                  key={entry.id}
+                  entry={entry}
+                  onView={() => {
+                    setSelectedPayslipId(entry.id);
+                    setPayslipDialogOpen(true);
+                  }}
+                  onDownload={() => handleDownloadPayslip(entry.id)}
+                  isLatest={index === 0}
+                />
+              ))
+            ) : (
+              <EmptyState 
+                icon={History}
+                title="No history yet"
+                description="Your payslip history will build up over time."
+              />
+            )}
           </div>
-        </TabsContent>
-      </Tabs>
+        )}
+
+        {activeTab === 'summary' && (
+          <div className="space-y-4">
+            {/* Year to Date Card */}
+            <div className="rounded-2xl bg-gradient-to-br from-slate-800/90 to-slate-800/50 border border-slate-700/50 p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <TrendingUp className="h-5 w-5 text-emerald-400" />
+                <h3 className="font-semibold text-white">Year to Date (2025)</h3>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <SummaryBlock label="Total Earnings" value={`₱${totalGrossPay.toLocaleString()}`} color="emerald" />
+                <SummaryBlock label="Take Home" value={`₱${totalNetPay.toLocaleString()}`} color="teal" />
+                <SummaryBlock label="Hours Worked" value={`${totalHours.toFixed(0)}h`} color="blue" />
+                <SummaryBlock label="Pay Periods" value={payrollEntries.length.toString()} color="violet" />
+              </div>
+            </div>
+
+            {/* Deductions Breakdown */}
+            <div className="rounded-2xl bg-gradient-to-br from-slate-800/90 to-slate-800/50 border border-slate-700/50 p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <Calculator className="h-5 w-5 text-amber-400" />
+                <h3 className="font-semibold text-white">Total Deductions</h3>
+              </div>
+              
+              <div className="space-y-3">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-slate-400">Government Contributions</span>
+                  <span className="text-white font-medium">₱{(totalDeductions * 0.7).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-slate-400">Tax Withheld</span>
+                  <span className="text-white font-medium">₱{(totalDeductions * 0.3).toFixed(2)}</span>
+                </div>
+                <div className="h-px bg-slate-700/50" />
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-300 font-medium">Total Deductions</span>
+                  <span className="text-rose-400 font-semibold">-₱{totalDeductions.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+
+            {payrollEntries.length === 0 && (
+              <EmptyState 
+                icon={PiggyBank}
+                title="No summary yet"
+                description="Your earnings summary will appear after your first payslip."
+              />
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Digital Payslip Modal */}
+      {selectedPayslipId && (
+        <DigitalPayslip
+          entryId={selectedPayslipId}
+          open={payslipDialogOpen}
+          onOpenChange={(open) => {
+            setPayslipDialogOpen(open);
+            if (!open) setSelectedPayslipId(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// Component: Metric Card
+function MetricCard({ icon: Icon, label, value, color }: { 
+  icon: any; label: string; value: string; 
+  color: 'emerald' | 'blue' | 'amber' | 'violet';
+}) {
+  const colors = {
+    emerald: "from-emerald-500/20 to-emerald-600/10 text-emerald-400 border-emerald-500/20",
+    blue: "from-blue-500/20 to-blue-600/10 text-blue-400 border-blue-500/20",
+    amber: "from-amber-500/20 to-amber-600/10 text-amber-400 border-amber-500/20",
+    violet: "from-violet-500/20 to-violet-600/10 text-violet-400 border-violet-500/20",
+  };
+
+  return (
+    <div className={cn(
+      "rounded-xl p-3 bg-gradient-to-br border backdrop-blur-sm",
+      colors[color]
+    )}>
+      <Icon className="h-4 w-4 mb-2 opacity-80" />
+      <p className="text-lg font-bold text-white">{value}</p>
+      <p className="text-xs opacity-70">{label}</p>
+    </div>
+  );
+}
+
+// Component: Tab Button
+function TabButton({ active, onClick, icon: Icon, children }: { 
+  active: boolean; onClick: () => void; icon: any; children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium rounded-lg transition-all",
+        active 
+          ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/25" 
+          : "text-slate-400 hover:text-white"
+      )}
+    >
+      <Icon className="h-4 w-4" />
+      {children}
+    </button>
+  );
+}
+
+// Component: Pay Row
+function PayRow({ label, value, suffix = '', negative = false, subdued = false }: { 
+  label: string; value: number; suffix?: string; negative?: boolean; subdued?: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className={subdued ? "text-slate-500 text-sm" : "text-slate-400"}>{label}</span>
+      <span className={cn(
+        "font-medium tabular-nums",
+        negative ? "text-rose-400" : subdued ? "text-slate-400 text-sm" : "text-white"
+      )}>
+        {negative ? '-' : ''}₱{Math.abs(value).toLocaleString(undefined, { minimumFractionDigits: suffix ? 0 : 2 })}{suffix}
+      </span>
+    </div>
+  );
+}
+
+// Component: History Item
+function HistoryItem({ entry, onView, onDownload, isLatest }: { 
+  entry: PayrollEntry; onView: () => void; onDownload: () => void; isLatest: boolean;
+}) {
+  return (
+    <div className="rounded-xl bg-slate-800/50 border border-slate-700/50 p-4 hover:bg-slate-800/70 transition-colors">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-3">
+          <div className={cn(
+            "w-10 h-10 rounded-xl flex items-center justify-center",
+            isLatest ? "bg-gradient-to-br from-emerald-500/20 to-teal-500/20" : "bg-slate-700/50"
+          )}>
+            <FileText className={cn("h-5 w-5", isLatest ? "text-emerald-400" : "text-slate-400")} />
+          </div>
+          <div>
+            <p className="font-medium text-white text-sm">
+              {format(new Date(entry.createdAt), "MMMM d, yyyy")}
+            </p>
+            <p className="text-xs text-slate-500">{parseFloat(String(entry.totalHours)).toFixed(1)} hours</p>
+          </div>
+        </div>
+        <div className="text-right">
+          <p className="font-semibold text-emerald-400">
+            ₱{parseFloat(String(entry.netPay)).toLocaleString()}
+          </p>
+          <span className={cn(
+            "text-xs px-2 py-0.5 rounded-full",
+            entry.status === 'paid' 
+              ? "bg-emerald-500/20 text-emerald-400" 
+              : "bg-amber-500/20 text-amber-400"
+          )}>
+            {entry.status}
+          </span>
+        </div>
+      </div>
+      <div className="flex gap-2">
+        <button 
+          onClick={onView}
+          className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium text-slate-400 hover:text-white bg-slate-700/30 hover:bg-slate-700/50 rounded-lg transition-colors"
+        >
+          <Eye className="h-3.5 w-3.5" />
+          View
+        </button>
+        <button 
+          onClick={onDownload}
+          className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 rounded-lg transition-colors"
+        >
+          <Download className="h-3.5 w-3.5" />
+          Download
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Component: Summary Block
+function SummaryBlock({ label, value, color }: { 
+  label: string; value: string; 
+  color: 'emerald' | 'teal' | 'blue' | 'violet';
+}) {
+  const colors = {
+    emerald: "text-emerald-400",
+    teal: "text-teal-400",
+    blue: "text-blue-400",
+    violet: "text-violet-400",
+  };
+
+  return (
+    <div className="p-3 rounded-xl bg-slate-700/30">
+      <p className="text-xs text-slate-500 mb-1">{label}</p>
+      <p className={cn("text-lg font-bold", colors[color])}>{value}</p>
+    </div>
+  );
+}
+
+// Component: Empty State
+function EmptyState({ icon: Icon, title, description }: { 
+  icon: any; title: string; description: string;
+}) {
+  return (
+    <div className="rounded-2xl bg-slate-800/30 border border-slate-700/30 p-8 text-center">
+      <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center">
+        <Icon className="h-8 w-8 text-amber-400" />
+      </div>
+      <p className="text-white font-medium mb-1">{title}</p>
+      <p className="text-slate-500 text-sm">{description}</p>
     </div>
   );
 }

@@ -11,6 +11,7 @@ import { blockchainService } from "./services/blockchain";
 import { registerBranchesRoutes } from "./routes/branches";
 import { router as employeeRoutes } from "./routes/employees";
 import { router as hoursRoutes } from "./routes/hours";
+import payslipsRouter from "./routes/payslips";
 import bcrypt from "bcrypt";
 import { format } from "date-fns";
 import crypto from "crypto";
@@ -79,7 +80,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ message: "Authentication required" });
     }
     
-    if (!roles.includes(user.role)) {
+    // Admin has access to all manager routes
+    const effectiveRoles = [...roles];
+    if (roles.includes('manager') && !roles.includes('admin')) {
+      effectiveRoles.push('admin');
+    }
+    
+    if (!effectiveRoles.includes(user.role)) {
       return res.status(403).json({ message: "Insufficient permissions" });
     }
     
@@ -711,6 +718,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register hours tracking routes
   app.use(hoursRoutes);
 
+  // Register payslips routes for PDF generation and verification
+  app.use('/api/payslips', payslipsRouter);
+
   // Payroll routes
   app.get("/api/payroll", requireAuth, async (req, res) => {
     const userId = req.user!.id;
@@ -1056,8 +1066,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Generate payslip data with detailed deductions
-    const parsedEntry = attachBreakdown(entry);
+    // Parse the pay breakdown JSON if it exists
+    let breakdown = null;
+    try {
+      if ((entry as any).payBreakdown) {
+        breakdown = JSON.parse((entry as any).payBreakdown);
+      }
+    } catch (e) {
+      // If parsing fails, breakdown stays null
+    }
 
     const payslipData = {
       employeeName: `${user.firstName} ${user.lastName}`,
@@ -1089,7 +1106,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       deductions: entry.deductions,
       netPay: entry.netPay,
       status: entry.status,
-      breakdown: parsedEntry.breakdown,
+      breakdown: breakdown,
     };
 
     res.json({ payslip: payslipData });

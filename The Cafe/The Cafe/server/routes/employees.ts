@@ -19,7 +19,13 @@ const requireRole = (roles: string[]) => (req: Request, res: Response, next: Nex
     return res.status(401).json({ message: "Authentication required" });
   }
 
-  if (!roles.includes(req.session.user.role)) {
+  // Admin has access to all manager routes
+  const effectiveRoles = [...roles];
+  if (roles.includes('manager') && !roles.includes('admin')) {
+    effectiveRoles.push('admin');
+  }
+
+  if (!effectiveRoles.includes(req.session.user.role)) {
     return res.status(403).json({ message: "Insufficient permissions" });
   }
 

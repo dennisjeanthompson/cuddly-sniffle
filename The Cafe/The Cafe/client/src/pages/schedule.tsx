@@ -7,7 +7,7 @@ import { TimeOffRequest } from "@/components/calendar/time-off-request";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Calendar as CalendarIcon, Clock, User, AlertCircle, CalendarDays, Users, LogIn, LogOut } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, Clock, User, AlertCircle, CalendarDays, Users, Sparkles, Check, X, Coffee } from "lucide-react";
 import { format, addDays, startOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isWithinInterval } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -196,50 +196,6 @@ export default function Schedule() {
   // Merge all events
   const events: CalendarEvent[] = [...shiftEvents, ...timeOffEvents];
 
-  // Clock in mutation
-  const clockInMutation = useMutation({
-    mutationFn: async (shiftId: string) => {
-      const response = await apiRequest('POST', `/api/shifts/${shiftId}/clock-in`, {});
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "Employee clocked in successfully",
-      });
-      queryClient.invalidateQueries({ queryKey: ["shifts"], exact: false });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to clock in employee",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Clock out mutation
-  const clockOutMutation = useMutation({
-    mutationFn: async (shiftId: string) => {
-      const response = await apiRequest('POST', `/api/shifts/${shiftId}/clock-out`, {});
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "Employee clocked out successfully",
-      });
-      queryClient.invalidateQueries({ queryKey: ["shifts"], exact: false });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to clock out employee",
-        variant: "destructive",
-      });
-    },
-  });
-
   // Handle event creation/update
   const handleSaveEvent = async (event: Omit<CalendarEvent, "id">) => {
     try {
@@ -365,7 +321,7 @@ export default function Schedule() {
     queryKey: ["/api/time-off-balance"],
   });
 
-  const timeOffBalance = timeOffBalanceData || {
+  const timeOffBalance = (timeOffBalanceData as { vacation: number; sick: number; personal: number; } | undefined) || {
     vacation: 0,
     sick: 0,
     personal: 0,
@@ -396,59 +352,50 @@ export default function Schedule() {
   ) : [];
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-foreground">Schedule</h2>
-          <p className="text-muted-foreground">
-            {isManagerRole ? "Manage employee schedules" : "View and manage your schedule"}
-          </p>
-        </div>
-      </div>
-
-      <Tabs defaultValue="schedule" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="schedule">
-            <CalendarIcon className="h-4 w-4 mr-2" />
-            Schedule
-          </TabsTrigger>
-          <TabsTrigger value="timeoff">
-            <Clock className="h-4 w-4 mr-2" />
-            Time Off
-          </TabsTrigger>
-          {isManagerRole && (
-            <>
-              <TabsTrigger value="requests">
+    <div className="p-6 space-y-6 animate-fade-in">
+      <Tabs defaultValue="schedule" className="space-y-6">
+        {/* Modern Header with Tabs */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <TabsList className="bg-muted/50 p-1 rounded-xl">
+            <TabsTrigger value="schedule" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
+              <CalendarIcon className="h-4 w-4 mr-2" />
+              Schedule
+            </TabsTrigger>
+            <TabsTrigger value="timeoff" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
+              <Coffee className="h-4 w-4 mr-2" />
+              Time Off
+            </TabsTrigger>
+            {isManagerRole && (
+              <TabsTrigger value="requests" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2 relative">
                 <AlertCircle className="h-4 w-4 mr-2" />
-                Pending Requests
+                Requests
+                {pendingRequests.length > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-primary-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
+                    {pendingRequests.length}
+                  </span>
+                )}
               </TabsTrigger>
-              <TabsTrigger value="clockinout">
-                <LogIn className="h-4 w-4 mr-2" />
-                Clock In/Out
-              </TabsTrigger>
-            </>
+            )}
+          </TabsList>
+          {isManagerRole && (
+            <Button
+              onClick={() => {
+                setSelectedEvent(null);
+                setIsEventModalOpen(true);
+              }}
+              size="sm"
+              className="rounded-xl btn-modern-primary shadow-lg shadow-primary/20"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Shift
+            </Button>
           )}
-        </TabsList>
+        </div>
 
-        <TabsContent value="schedule">
-          <div className="bg-card rounded-lg border">
-            <div className="p-4 flex justify-between items-center">
-              <h3 className="text-lg font-medium">
-                {isManagerRole ? "Team Schedule" : "My Schedule"}
-              </h3>
-              {isManagerRole && (
-                <Button
-                  onClick={() => {
-                    setSelectedEvent(null);
-                    setIsEventModalOpen(true);
-                  }}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Shift
-                </Button>
-              )}
-            </div>
-            <div className="p-4 pt-0">
+        {/* Schedule Tab */}
+        <TabsContent value="schedule" className="mt-0">
+          <div className="card-modern p-0 overflow-hidden">
+            <div className="p-6">
               <CalendarComponent
                 events={events}
                 onEventClick={handleEventClick}
@@ -460,255 +407,239 @@ export default function Schedule() {
                 }}
                 viewMode={viewMode}
                 isManager={isManagerRole}
-                currentUser={currentUser}
+                currentUser={user}
               />
             </div>
           </div>
         </TabsContent>
 
-        <TabsContent value="timeoff">
-          <div className="grid gap-6 md:grid-cols-3">
-            <div className="md:col-span-2">
-              <div className="bg-card rounded-lg border p-4">
-                <h3 className="text-lg font-medium mb-4">Request Time Off</h3>
+        {/* Time Off Tab */}
+        <TabsContent value="timeoff" className="mt-0">
+          <div className="grid gap-6 lg:grid-cols-3">
+            {/* Request Form */}
+            <div className="lg:col-span-2">
+              <div className="card-modern">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
+                    <CalendarDays className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg">Request Time Off</h3>
+                    <p className="text-sm text-muted-foreground">Submit your time off request</p>
+                  </div>
+                </div>
                 <TimeOffRequest
                   onRequestSubmit={handleTimeOffRequest}
                   timeOffBalance={timeOffBalance}
                 />
               </div>
             </div>
-            <div className="space-y-4">
-              <div className="bg-card rounded-lg border p-4">
-                <h3 className="font-medium mb-3">Upcoming Time Off</h3>
+
+            {/* Sidebar Cards */}
+            <div className="space-y-6">
+              {/* Upcoming Time Off */}
+              <div className="card-modern">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-950/50 flex items-center justify-center">
+                    <CalendarDays className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <h3 className="font-semibold">Upcoming Time Off</h3>
+                </div>
                 {upcomingTimeOff.length > 0 ? (
-                  upcomingTimeOff.map((event) => (
-                    <div
-                      key={event.id}
-                      className="flex items-center justify-between py-2 border-b last:border-b-0"
-                    >
-                      <div>
-                        <p className="font-medium">
-                          {format(new Date(event.start), "MMM d")} -{" "}
-                          {format(new Date(event.end), "MMM d, yyyy")}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {event.title}
-                        </p>
+                  <div className="space-y-3">
+                    {upcomingTimeOff.map((event) => (
+                      <div
+                        key={event.id}
+                        className="flex items-center justify-between p-3 bg-gradient-to-r from-muted/50 to-transparent rounded-xl transition-all hover:from-muted"
+                      >
+                        <div>
+                          <p className="text-sm font-medium">
+                            {format(new Date(event.start), "MMM d")} -{" "}
+                            {format(new Date(event.end), "MMM d")}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {event.title}
+                          </p>
+                        </div>
+                        <span className={`badge-modern ${
+                          event.status === 'approved' 
+                            ? 'badge-success'
+                            : 'badge-warning'
+                        }`}>
+                          {event.status}
+                        </span>
                       </div>
-                      <div className="text-sm text-muted-foreground">
-                        {event.status === "approved" ? (
-                          <span className="text-green-500">Approved</span>
-                        ) : event.status === "rejected" ? (
-                          <span className="text-red-500">Rejected</span>
-                        ) : (
-                          <span className="text-yellow-500">Pending</span>
-                        )}
-                      </div>
-                    </div>
-                  ))
+                    ))}
+                  </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground">
-                    No upcoming time off scheduled
-                  </p>
+                  <div className="empty-modern py-8">
+                    <div className="w-12 h-12 rounded-xl bg-muted/50 flex items-center justify-center mb-3">
+                      <CalendarDays className="h-6 w-6 text-muted-foreground/50" />
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      No upcoming time off scheduled
+                    </p>
+                  </div>
                 )}
               </div>
 
-              <div className="bg-card rounded-lg border p-4">
-                <h3 className="font-medium mb-3">Team Time Off</h3>
+              {/* Team Time Off */}
+              <div className="card-modern">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-950/50 flex items-center justify-center">
+                    <Users className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <h3 className="font-semibold">Team Time Off</h3>
+                </div>
                 {isManagerRole ? (
-                  <>
-                    {teamTimeOff.length > 0 ? (
-                      teamTimeOff.map((event) => (
+                  teamTimeOff.length > 0 ? (
+                    <div className="space-y-3">
+                      {teamTimeOff.map((event) => (
                         <div
                           key={event.id}
-                          className="flex items-center justify-between py-2 border-b last:border-b-0"
+                          className="flex items-center justify-between p-3 bg-gradient-to-r from-muted/50 to-transparent rounded-xl transition-all hover:from-muted"
                         >
-                          <div>
-                            <p className="font-medium">
-                              {event.employeeName}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              {format(new Date(event.start), "MMM d")} -{" "}
-                              {format(new Date(event.end), "MMM d")}
-                            </p>
+                          <div className="flex items-center gap-3">
+                            <div className="avatar-modern w-8 h-8 text-xs">
+                              {event.employeeName?.charAt(0)}
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium">{event.employeeName}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {format(new Date(event.start), "MMM d")} - {format(new Date(event.end), "MMM d")}
+                              </p>
+                            </div>
                           </div>
-                          <div className="text-sm text-muted-foreground">
-                            {event.status === "approved" ? (
-                              <span className="text-green-500">Approved</span>
-                            ) : event.status === "rejected" ? (
-                              <span className="text-red-500">Rejected</span>
-                            ) : (
-                              <span className="text-yellow-500">Pending</span>
-                            )}
-                          </div>
+                          <span className={`badge-modern ${
+                            event.status === 'approved' 
+                              ? 'badge-success'
+                              : event.status === 'rejected'
+                              ? 'badge-error'
+                              : 'badge-warning'
+                          }`}>
+                            {event.status}
+                          </span>
                         </div>
-                      ))
-                    ) : (
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="empty-modern py-8">
+                      <div className="w-12 h-12 rounded-xl bg-muted/50 flex items-center justify-center mb-3">
+                        <Users className="h-6 w-6 text-muted-foreground/50" />
+                      </div>
                       <p className="text-sm text-muted-foreground">
                         No team time off scheduled
                       </p>
-                    )}
-                  </>
+                    </div>
+                  )
                 ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Only managers can view team time off
-                  </p>
+                  <div className="empty-modern py-8">
+                    <div className="w-12 h-12 rounded-xl bg-muted/50 flex items-center justify-center mb-3">
+                      <Users className="h-6 w-6 text-muted-foreground/50" />
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Only managers can view team time off
+                    </p>
+                  </div>
                 )}
               </div>
             </div>
           </div>
         </TabsContent>
 
+        {/* Requests Tab (Manager Only) */}
         {isManagerRole && (
-          <TabsContent value="requests">
-            <div className="bg-card rounded-lg border p-4">
-              <h3 className="text-lg font-medium mb-4">Pending Requests</h3>
+          <TabsContent value="requests" className="mt-0">
+            <div className="card-modern">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-500/10 flex items-center justify-center">
+                  <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg">Pending Requests</h3>
+                  <p className="text-sm text-muted-foreground">Review and manage time off requests</p>
+                </div>
+              </div>
               {pendingRequests.length > 0 ? (
                 <div className="space-y-4">
                   {pendingRequests.map((event) => (
                     <div
                       key={event.id}
-                      className="border rounded-lg p-4 space-y-2"
+                      className="flex items-center justify-between p-4 bg-gradient-to-r from-amber-50 to-amber-25 dark:from-amber-950/30 dark:to-transparent rounded-xl border border-amber-200/50 dark:border-amber-800/30"
                     >
-                      <div className="flex justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="avatar-modern w-10 h-10 text-sm">
+                          {event.employeeName?.charAt(0)}
+                        </div>
                         <div>
-                          <h4 className="font-medium">
-                            {event.employeeName} - {event.title}
-                          </h4>
-                          <p className="text-sm text-muted-foreground">
-                            {format(new Date(event.start), "MMM d, yyyy")} -{" "}
-                            {format(new Date(event.end), "MMM d, yyyy")}
+                          <p className="font-medium">
+                            {event.employeeName} - <span className="text-muted-foreground">{event.title}</span>
+                          </p>
+                          <p className="text-sm text-muted-foreground mt-0.5">
+                            {format(new Date(event.start), "MMM d")} - {format(new Date(event.end), "MMM d, yyyy")}
                           </p>
                         </div>
-                        <div className="flex space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={async () => {
-                              try {
-                                await apiRequest('PUT', `/api/time-off-requests/${event.id}/approve`);
-                                toast({
-                                  title: "Request Approved",
-                                  description: `${event.employeeName}'s time off has been approved`,
-                                });
-                                queryClient.invalidateQueries({ queryKey: ["time-off"] });
-                              } catch (error: any) {
-                                toast({
-                                  title: "Error",
-                                  description: error.message || "Failed to approve request",
-                                  variant: "destructive",
-                                });
-                              }
-                            }}
-                          >
-                            Approve
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-destructive"
-                            onClick={async () => {
-                              try {
-                                await apiRequest('PUT', `/api/time-off-requests/${event.id}/reject`);
-                                toast({
-                                  title: "Request Rejected",
-                                  description: `${event.employeeName}'s time off has been rejected`,
-                                });
-                                queryClient.invalidateQueries({ queryKey: ["time-off"] });
-                              } catch (error: any) {
-                                toast({
-                                  title: "Error",
-                                  description: error.message || "Failed to reject request",
-                                  variant: "destructive",
-                                });
-                              }
-                            }}
-                          >
-                            Reject
-                          </Button>
-                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20"
+                          onClick={async () => {
+                            try {
+                              await apiRequest('PUT', `/api/time-off-requests/${event.id}/approve`);
+                              toast({
+                                title: "Approved",
+                                description: `${event.employeeName}'s time off has been approved`,
+                              });
+                              queryClient.invalidateQueries({ queryKey: ["time-off"] });
+                            } catch (error: any) {
+                              toast({
+                                title: "Error",
+                                description: error.message || "Failed to approve",
+                                variant: "destructive",
+                              });
+                            }
+                          }}
+                        >
+                          <Check className="h-4 w-4 mr-1" />
+                          Approve
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="rounded-xl border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-800 dark:hover:bg-red-950/50"
+                          onClick={async () => {
+                            try {
+                              await apiRequest('PUT', `/api/time-off-requests/${event.id}/reject`);
+                              toast({
+                                title: "Rejected",
+                                description: `${event.employeeName}'s time off has been rejected`,
+                              });
+                              queryClient.invalidateQueries({ queryKey: ["time-off"] });
+                            } catch (error: any) {
+                              toast({
+                                title: "Error",
+                                description: error.message || "Failed to reject",
+                                variant: "destructive",
+                              });
+                            }
+                          }}
+                        >
+                          <X className="h-4 w-4 mr-1" />
+                          Reject
+                        </Button>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-muted-foreground">
-                  No pending requests at this time
-                </p>
-              )}
-            </div>
-          </TabsContent>
-        )}
-
-        {isManagerRole && (
-          <TabsContent value="clockinout">
-            <div className="bg-card rounded-lg border p-4">
-              <h3 className="text-lg font-medium mb-4">Clock In/Out Management</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Manage employee clock in and clock out times for today's shifts
-              </p>
-
-              {events.filter(e => e.type === 'shift' && isSameDay(new Date(e.start), new Date())).length > 0 ? (
-                <div className="space-y-3">
-                  {events
-                    .filter(e => e.type === 'shift' && isSameDay(new Date(e.start), new Date()))
-                    .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
-                    .map((shift) => (
-                      <Card key={shift.id} className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h4 className="font-medium">{shift.employeeName}</h4>
-                              <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
-                                {shift.title}
-                              </span>
-                            </div>
-                            <p className="text-sm text-muted-foreground">
-                              {format(new Date(shift.start), "MMM d, yyyy")} • {format(new Date(shift.start), "h:mm a")} - {format(new Date(shift.end), "h:mm a")}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Status: <span className="font-medium capitalize">{shift.status}</span>
-                            </p>
-                          </div>
-                          <div className="flex gap-2">
-                            {shift.status === 'scheduled' && (
-                              <Button
-                                size="sm"
-                                onClick={() => clockInMutation.mutate(shift.id)}
-                                disabled={clockInMutation.isPending}
-                                className="gap-2"
-                              >
-                                <LogIn className="h-4 w-4" />
-                                Clock In
-                              </Button>
-                            )}
-                            {shift.status === 'in-progress' && (
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => clockOutMutation.mutate(shift.id)}
-                                disabled={clockOutMutation.isPending}
-                                className="gap-2"
-                              >
-                                <LogOut className="h-4 w-4" />
-                                Clock Out
-                              </Button>
-                            )}
-                            {shift.status === 'completed' && (
-                              <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">
-                                Completed
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Clock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">
-                    No shifts scheduled for today.
+                <div className="empty-modern py-12">
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-100 to-emerald-50 dark:from-emerald-950/50 dark:to-emerald-900/30 flex items-center justify-center mb-4">
+                    <Check className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <h4 className="font-semibold text-lg mb-1">All Caught Up!</h4>
+                  <p className="text-sm text-muted-foreground">
+                    No pending requests to review
                   </p>
                 </div>
               )}

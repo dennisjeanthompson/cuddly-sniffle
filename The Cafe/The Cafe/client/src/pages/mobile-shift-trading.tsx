@@ -1,16 +1,27 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
-import { ArrowRightLeft, Clock, MapPin, User, Plus, X } from "lucide-react";
+import { 
+  ArrowRightLeft, 
+  Clock, 
+  User, 
+  X, 
+  Check,
+  AlertTriangle,
+  Zap,
+  ChevronRight,
+  HandMetal,
+  Users
+} from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { getCurrentUser } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import MobileHeader from "@/components/layout/mobile-header";
 import MobileBottomNav from "@/components/layout/mobile-bottom-nav";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface ShiftTrade {
   id: string;
@@ -61,8 +72,8 @@ export default function MobileShiftTrading() {
       queryClient.invalidateQueries({ queryKey: ['mobile-shift-trades-available'] });
       queryClient.invalidateQueries({ queryKey: ['mobile-shift-trades-my'] });
       toast({
-        title: "Success",
-        description: "Shift trade request sent for approval",
+        title: "Request Sent! 🎉",
+        description: "Your shift trade request has been sent for approval",
       });
     },
     onError: (error: any) => {
@@ -81,8 +92,8 @@ export default function MobileShiftTrading() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['mobile-shift-trades-my'] });
       toast({
-        title: "Success",
-        description: "Shift trade cancelled",
+        title: "Trade Cancelled",
+        description: "Your shift trade has been cancelled",
       });
     },
     onError: (error: any) => {
@@ -97,162 +108,236 @@ export default function MobileShiftTrading() {
   const availableTrades: ShiftTrade[] = availableData?.trades || [];
   const myTrades: ShiftTrade[] = myTradesData?.trades || [];
 
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, any> = {
-      pending: "secondary",
-      approved: "default",
-      rejected: "destructive",
+  const getStatusConfig = (status: string) => {
+    const configs: Record<string, { variant: any; icon: any; color: string }> = {
+      pending: { variant: "secondary", icon: Clock, color: "text-amber-600" },
+      approved: { variant: "default", icon: Check, color: "text-green-600" },
+      rejected: { variant: "destructive", icon: X, color: "text-red-600" },
     };
-    return (
-      <Badge variant={variants[status] || "secondary"}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
-      </Badge>
-    );
+    return configs[status] || configs.pending;
   };
 
-  const getUrgencyBadge = (urgency: string) => {
-    const variants: Record<string, any> = {
-      low: "secondary",
-      normal: "default",
-      urgent: "destructive",
+  const getUrgencyConfig = (urgency: string) => {
+    const configs: Record<string, { variant: any; icon: any; color: string; bg: string }> = {
+      low: { variant: "secondary", icon: Clock, color: "text-gray-600", bg: "bg-gray-100 dark:bg-gray-800" },
+      normal: { variant: "default", icon: Check, color: "text-blue-600", bg: "bg-blue-100 dark:bg-blue-950" },
+      urgent: { variant: "destructive", icon: Zap, color: "text-red-600", bg: "bg-red-100 dark:bg-red-950" },
     };
-    return (
-      <Badge variant={variants[urgency] || "default"} className="text-xs">
-        {urgency.charAt(0).toUpperCase() + urgency.slice(1)}
-      </Badge>
-    );
+    return configs[urgency] || configs.normal;
+  };
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { staggerChildren: 0.08 } }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0 }
   };
 
   const renderShiftCard = (trade: ShiftTrade, type: "available" | "my") => {
+    const urgencyConfig = getUrgencyConfig(trade.urgency);
+    const statusConfig = getStatusConfig(trade.status);
+    const UrgencyIcon = urgencyConfig.icon;
+    const StatusIcon = statusConfig.icon;
+    const shiftDate = parseISO(trade.shift.startTime);
+    const endTime = parseISO(trade.shift.endTime);
+
     return (
-      <Card key={trade.id}>
-        <CardContent className="p-4">
-          <div className="flex items-start justify-between mb-3">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <h4 className="font-semibold">{trade.shift.position}</h4>
-                {getUrgencyBadge(trade.urgency)}
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                <Clock className="h-4 w-4" />
-                <span>
-                  {format(parseISO(trade.shift.startTime), "MMM d, h:mm a")} -{" "}
-                  {format(parseISO(trade.shift.endTime), "h:mm a")}
-                </span>
-              </div>
-              {type === "available" && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <User className="h-4 w-4" />
-                  <span>
-                    {trade.fromUser.firstName} {trade.fromUser.lastName}
+      <motion.div key={trade.id} variants={itemVariants}>
+        <Card className={`border-0 shadow-md bg-card/80 backdrop-blur overflow-hidden ${
+          trade.urgency === 'urgent' ? 'ring-2 ring-red-500/30' : ''
+        }`}>
+          <CardContent className="p-5">
+            <div className="flex items-start gap-4">
+              {/* Left side - Avatar/Icon */}
+              <div className={`w-14 h-14 rounded-2xl ${urgencyConfig.bg} flex items-center justify-center shrink-0`}>
+                {type === 'available' ? (
+                  <span className="text-xl font-bold text-muted-foreground">
+                    {trade.fromUser.firstName[0]}{trade.fromUser.lastName[0]}
                   </span>
+                ) : (
+                  <ArrowRightLeft className={`h-7 w-7 ${urgencyConfig.color}`} />
+                )}
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 min-w-0">
+                {/* Header */}
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div>
+                    <h4 className="font-bold text-lg">{trade.shift.position}</h4>
+                    {type === 'available' && (
+                      <p className="text-base text-muted-foreground flex items-center gap-1">
+                        <User className="h-4 w-4" />
+                        {trade.fromUser.firstName} {trade.fromUser.lastName}
+                      </p>
+                    )}
+                  </div>
+                  {type === 'my' ? (
+                    <Badge variant={statusConfig.variant} className="flex items-center gap-1 px-3 py-1">
+                      <StatusIcon className="h-3.5 w-3.5" />
+                      {trade.status.charAt(0).toUpperCase() + trade.status.slice(1)}
+                    </Badge>
+                  ) : (
+                    <Badge variant={urgencyConfig.variant} className="flex items-center gap-1 px-3 py-1">
+                      <UrgencyIcon className="h-3.5 w-3.5" />
+                      {trade.urgency.charAt(0).toUpperCase() + trade.urgency.slice(1)}
+                    </Badge>
+                  )}
                 </div>
-              )}
+
+                {/* Time Info */}
+                <div className="flex items-center gap-2 text-base mb-3 bg-muted/50 rounded-lg p-3">
+                  <Clock className="h-5 w-5 text-primary" />
+                  <div>
+                    <p className="font-semibold">{format(shiftDate, "EEEE, MMM d")}</p>
+                    <p className="text-muted-foreground">
+                      {format(shiftDate, "h:mm a")} - {format(endTime, "h:mm a")}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Reason */}
+                <p className="text-base text-muted-foreground mb-4 line-clamp-2">{trade.reason}</p>
+
+                {/* Action Button */}
+                {type === "available" ? (
+                  <Button
+                    className="w-full h-14 text-lg font-semibold"
+                    onClick={() => takeShiftMutation.mutate(trade.id)}
+                    disabled={takeShiftMutation.isPending}
+                  >
+                    <HandMetal className="h-5 w-5 mr-2" />
+                    Take This Shift
+                  </Button>
+                ) : trade.status === "pending" ? (
+                  <Button
+                    variant="destructive"
+                    className="w-full h-14 text-lg font-semibold"
+                    onClick={() => cancelTradeMutation.mutate(trade.id)}
+                    disabled={cancelTradeMutation.isPending}
+                  >
+                    <X className="h-5 w-5 mr-2" />
+                    Cancel Trade
+                  </Button>
+                ) : null}
+              </div>
             </div>
-            {type === "my" && getStatusBadge(trade.status)}
-          </div>
-
-          <p className="text-sm text-muted-foreground mb-3">{trade.reason}</p>
-
-          {type === "available" ? (
-            <Button
-              className="w-full"
-              onClick={() => takeShiftMutation.mutate(trade.id)}
-              disabled={takeShiftMutation.isPending}
-            >
-              <ArrowRightLeft className="h-4 w-4 mr-2" />
-              Take This Shift
-            </Button>
-          ) : trade.status === "pending" ? (
-            <Button
-              variant="destructive"
-              className="w-full"
-              onClick={() => cancelTradeMutation.mutate(trade.id)}
-              disabled={cancelTradeMutation.isPending}
-            >
-              <X className="h-4 w-4 mr-2" />
-              Cancel Trade
-            </Button>
-          ) : null}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </motion.div>
     );
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 pb-28">
       <MobileHeader
         title="Shift Trading"
-        subtitle="Trade shifts with coworkers"
+        subtitle="Swap shifts with coworkers"
         showBack={true}
-        showMenu={false}
       />
 
-      <div className="p-4 space-y-4">
-        {/* Tabs */}
-        <div className="flex gap-2 bg-muted p-1 rounded-lg">
+      <div className="p-5 space-y-5">
+        {/* Tab Switcher */}
+        <div className="flex gap-2 bg-muted p-1.5 rounded-xl">
           <button
             onClick={() => setActiveTab("available")}
-            className={`flex-1 py-2 px-4 rounded-md font-medium transition-all ${
+            className={`flex-1 py-3.5 px-4 rounded-lg font-bold text-base transition-all flex items-center justify-center gap-2 ${
               activeTab === "available"
-                ? "bg-background text-foreground shadow-sm"
+                ? "bg-background text-foreground shadow-md"
                 : "text-muted-foreground"
             }`}
           >
-            Available ({availableTrades.length})
+            <Users className="h-5 w-5" />
+            Available
+            {availableTrades.length > 0 && (
+              <Badge variant="default" className="ml-1">{availableTrades.length}</Badge>
+            )}
           </button>
           <button
             onClick={() => setActiveTab("my")}
-            className={`flex-1 py-2 px-4 rounded-md font-medium transition-all ${
+            className={`flex-1 py-3.5 px-4 rounded-lg font-bold text-base transition-all flex items-center justify-center gap-2 ${
               activeTab === "my"
-                ? "bg-background text-foreground shadow-sm"
+                ? "bg-background text-foreground shadow-md"
                 : "text-muted-foreground"
             }`}
           >
-            My Trades ({myTrades.length})
+            <ArrowRightLeft className="h-5 w-5" />
+            My Trades
+            {myTrades.length > 0 && (
+              <Badge variant="secondary" className="ml-1">{myTrades.length}</Badge>
+            )}
           </button>
         </div>
 
         {/* Content */}
-        <div className="space-y-3">
+        <AnimatePresence mode="wait">
           {activeTab === "available" ? (
-            loadingAvailable ? (
-              <div className="text-center py-8">
-                <ArrowRightLeft className="h-12 w-12 text-muted-foreground animate-pulse mx-auto mb-2" />
-                <p className="text-muted-foreground">Loading available shifts...</p>
-              </div>
-            ) : availableTrades.length === 0 ? (
-              <Card>
-                <CardContent className="p-8 text-center">
-                  <ArrowRightLeft className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-                  <p className="text-muted-foreground mb-2">No available shifts</p>
-                  <p className="text-sm text-muted-foreground">
-                    Check back later for shifts to trade
-                  </p>
-                </CardContent>
-              </Card>
-            ) : (
-              availableTrades.map((trade) => renderShiftCard(trade, "available"))
-            )
-          ) : loadingMy ? (
-            <div className="text-center py-8">
-              <ArrowRightLeft className="h-12 w-12 text-muted-foreground animate-pulse mx-auto mb-2" />
-              <p className="text-muted-foreground">Loading your trades...</p>
-            </div>
-          ) : myTrades.length === 0 ? (
-            <Card>
-              <CardContent className="p-8 text-center">
-                <ArrowRightLeft className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-                <p className="text-muted-foreground mb-2">No active trades</p>
-                <p className="text-sm text-muted-foreground">
-                  You haven't posted any shifts for trade
-                </p>
-              </CardContent>
-            </Card>
+            <motion.div
+              key="available"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+              className="space-y-4"
+            >
+              {loadingAvailable ? (
+                <div className="text-center py-12">
+                  <div className="w-20 h-20 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <ArrowRightLeft className="h-10 w-10 text-primary animate-pulse" />
+                  </div>
+                  <p className="text-muted-foreground text-lg">Loading available shifts...</p>
+                </div>
+              ) : availableTrades.length === 0 ? (
+                <Card className="border-0 shadow-lg bg-card/80 backdrop-blur">
+                  <CardContent className="p-12 text-center">
+                    <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Users className="h-12 w-12 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-2xl font-bold mb-2">No Shifts Available</h3>
+                    <p className="text-muted-foreground text-lg">
+                      Check back later for shifts to pick up
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                availableTrades.map((trade) => renderShiftCard(trade, "available"))
+              )}
+            </motion.div>
           ) : (
-            myTrades.map((trade) => renderShiftCard(trade, "my"))
+            <motion.div
+              key="my"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+              className="space-y-4"
+            >
+              {loadingMy ? (
+                <div className="text-center py-12">
+                  <div className="w-20 h-20 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <ArrowRightLeft className="h-10 w-10 text-primary animate-pulse" />
+                  </div>
+                  <p className="text-muted-foreground text-lg">Loading your trades...</p>
+                </div>
+              ) : myTrades.length === 0 ? (
+                <Card className="border-0 shadow-lg bg-card/80 backdrop-blur">
+                  <CardContent className="p-12 text-center">
+                    <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                      <ArrowRightLeft className="h-12 w-12 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-2xl font-bold mb-2">No Active Trades</h3>
+                    <p className="text-muted-foreground text-lg">
+                      You haven't posted any shifts for trade yet
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                myTrades.map((trade) => renderShiftCard(trade, "my"))
+              )}
+            </motion.div>
           )}
-        </div>
+        </AnimatePresence>
       </div>
 
       <MobileBottomNav />

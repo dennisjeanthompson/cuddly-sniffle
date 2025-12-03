@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { UserCog, Users, Clock, Coffee, AlertTriangle } from "lucide-react";
+import { UserCog, Users, Calendar, Coffee, AlertTriangle } from "lucide-react";
 import { getInitials, getStatusColor } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
@@ -13,8 +13,8 @@ export default function EmployeeStatus() {
   const getStatusIcon = (status: string) => {
     switch (status.toLowerCase()) {
       case 'working':
-      case 'clocked in':
-        return <Clock className="h-3 w-3" />;
+      case 'scheduled':
+        return <Calendar className="h-3 w-3" />;
       case 'on break':
         return <Coffee className="h-3 w-3" />;
       case 'late':
@@ -27,7 +27,7 @@ export default function EmployeeStatus() {
   const getModernStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'working':
-      case 'clocked in':
+      case 'scheduled':
         return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
       case 'on break':
         return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
@@ -67,7 +67,7 @@ export default function EmployeeStatus() {
   }
 
   const activeCount = employeeStatus?.employeeStatus?.filter(
-    (e: any) => e.status.toLowerCase() === 'working' || e.status.toLowerCase() === 'clocked in'
+    (e: any) => e.status.toLowerCase() === 'working' || e.status.toLowerCase() === 'scheduled'
   ).length || 0;
 
   return (
@@ -106,7 +106,7 @@ export default function EmployeeStatus() {
                         {getInitials(employee.user.firstName, employee.user.lastName)}
                       </span>
                     </div>
-                    {(employee.status.toLowerCase() === 'working' || employee.status.toLowerCase() === 'clocked in') && (
+                    {(employee.status.toLowerCase() === 'working' || employee.status.toLowerCase() === 'scheduled') && (
                       <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-card" />
                     )}
                   </div>

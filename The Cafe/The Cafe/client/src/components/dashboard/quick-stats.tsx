@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
-import { Users, Coffee, Clock, TrendingUp, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { Users, CalendarCheck, TrendingUp, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { DashboardStats } from "@shared/schema";
 
 export default function QuickStats() {
@@ -10,46 +10,46 @@ export default function QuickStats() {
 
   // Default values for stats with type safety
   const statsData = {
-    clockedIn: stats?.stats?.clockedIn ?? 0,
-    onBreak: stats?.stats?.onBreak ?? 0,
-    late: stats?.stats?.late ?? 0,
+    totalEmployees: stats?.stats?.totalEmployees ?? 0,
+    scheduledToday: stats?.stats?.scheduledToday ?? 0,
+    pendingRequests: stats?.stats?.pendingRequests ?? 0,
   };
 
   const statCards = [
     {
-      title: "Clocked In",
-      subtitle: "Active employees",
-      value: statsData.clockedIn,
+      title: "Total Employees",
+      subtitle: "Active staff",
+      value: statsData.totalEmployees,
       icon: Users,
       gradient: "from-emerald-500 to-teal-500",
       bgGradient: "from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30",
       iconBg: "bg-emerald-100 dark:bg-emerald-900/30",
       textColor: "text-emerald-600 dark:text-emerald-400",
-      trend: "+12%",
+      trend: "+5%",
       trendUp: true,
     },
     {
-      title: "On Break",
-      subtitle: "Taking a rest",
-      value: statsData.onBreak,
-      icon: Coffee,
+      title: "Scheduled Today",
+      subtitle: "Shifts assigned",
+      value: statsData.scheduledToday,
+      icon: CalendarCheck,
+      gradient: "from-blue-500 to-indigo-500",
+      bgGradient: "from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30",
+      iconBg: "bg-blue-100 dark:bg-blue-900/30",
+      textColor: "text-blue-600 dark:text-blue-400",
+      trend: "+8%",
+      trendUp: true,
+    },
+    {
+      title: "Pending Requests",
+      subtitle: "Awaiting approval",
+      value: statsData.pendingRequests,
+      icon: TrendingUp,
       gradient: "from-amber-500 to-orange-500",
       bgGradient: "from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30",
       iconBg: "bg-amber-100 dark:bg-amber-900/30",
       textColor: "text-amber-600 dark:text-amber-400",
-      trend: "0%",
-      trendUp: true,
-    },
-    {
-      title: "Late Arrivals",
-      subtitle: "Today",
-      value: statsData.late,
-      icon: Clock,
-      gradient: "from-red-500 to-rose-500",
-      bgGradient: "from-red-50 to-rose-50 dark:from-red-950/30 dark:to-rose-950/30",
-      iconBg: "bg-red-100 dark:bg-red-900/30",
-      textColor: "text-red-600 dark:text-red-400",
-      trend: "-5%",
+      trend: "-2%",
       trendUp: false,
     },
   ];

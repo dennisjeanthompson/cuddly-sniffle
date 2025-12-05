@@ -243,11 +243,11 @@ export default function MobilePayroll() {
     return {
       payslip_id: `PS-${payslip.id || entry.id}`,
       company: {
-        name: "The Café Inc.",
-        address: "123 Coffee Lane, Makati City, Metro Manila 1200",
-        tin: "123-456-789-000",
-        phone: "(02) 8123-4567",
-        email: "payroll@thecafe.ph"
+        name: "Don Macchiatos",
+        address: "La Union, Philippines",
+        tin: "XXX-XXX-XXX-XXX",
+        phone: "",
+        email: "payroll@donmacchiatos.ph"
       },
       employee: {
         id: currentUser?.id?.toString() || "EMP-000",

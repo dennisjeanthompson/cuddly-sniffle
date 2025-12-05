@@ -50,6 +50,7 @@ import {
   Receipt,
   Speed,
   Groups,
+  Description as DescriptionIcon,
 } from "@mui/icons-material";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
@@ -57,6 +58,7 @@ import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { format, subDays, addDays, startOfMonth, endOfMonth } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import DigitalPayslipViewer from "@/components/payslip/digital-payslip-viewer";
 
 interface PayrollPeriod {
   id: string;
@@ -119,6 +121,18 @@ export default function MuiPayrollManagement() {
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [periodType, setPeriodType] = useState<PeriodType>('2weeks');
+  
+  // Digital payslip viewer state
+  const [payslipViewerOpen, setPayslipViewerOpen] = useState(false);
+  const [selectedEntryForPayslip, setSelectedEntryForPayslip] = useState<PayrollEntry | null>(null);
+  
+  // Handle opening digital payslip viewer
+  const handleViewPayslip = (entry: PayrollEntry) => {
+    setSelectedEntryForPayslip(entry);
+    setPayslipViewerOpen(true);
+  };
+
+  // Handle period type changeType] = useState<PeriodType>('2weeks');
 
   // Handle period type change
   const handlePeriodTypeChange = (type: PeriodType) => {
@@ -848,19 +862,17 @@ export default function MuiPayrollManagement() {
                         <TableCell align="right" sx={{ color: "error.main" }}>
                           -₱{parseFloat(String(entry.deductions)).toLocaleString()}
                         </TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 600, color: "success.main" }}>
-                          ₱{parseFloat(String(entry.netPay)).toLocaleString()}
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={entry.status}
-                            size="small"
-                            color={getStatusColor(entry.status) as any}
-                            sx={{ textTransform: "capitalize" }}
-                          />
-                        </TableCell>
                         <TableCell align="right">
                           <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                            <Tooltip title="View digital payslip (PH — Compliant 2025)">
+                              <IconButton
+                                size="small"
+                                color="info"
+                                onClick={() => handleViewPayslip(entry)}
+                              >
+                                <DescriptionIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
                             {entry.status === "pending" && (
                               <Tooltip title="Approve">
                                 <IconButton
@@ -1123,24 +1135,17 @@ export default function MuiPayrollManagement() {
             </Stack>
           </LocalizationProvider>
         </DialogContent>
-        <DialogActions sx={{ p: 3, pt: 2, gap: 1 }}>
-          <Button
+        <DialogActions sx={{ p: 3, pt: 0 }}>
+          <Button 
             onClick={() => setIsCreateDialogOpen(false)}
-            sx={{ 
-              borderRadius: 2, 
-              textTransform: "none",
-              px: 3,
-            }}
+            sx={{ borderRadius: 2, textTransform: "none" }}
           >
             Cancel
           </Button>
           <Button
             variant="contained"
             onClick={handleCreatePeriod}
-            disabled={createPeriodMutation.isPending || !startDate || !endDate}
-            startIcon={
-              createPeriodMutation.isPending ? <CircularProgress size={16} color="inherit" /> : <AddIcon />
-            }
+            disabled={!startDate || !endDate || createPeriodMutation.isPending}
             sx={{ 
               borderRadius: 2, 
               textTransform: "none", 
@@ -1153,6 +1158,23 @@ export default function MuiPayrollManagement() {
           </Button>
         </DialogActions>
       </Dialog>
+      
+      {/* Digital Payslip Viewer */}
+      {selectedEntryForPayslip && selectedPeriod && (
+        <DigitalPayslipViewer
+          payrollEntryId={selectedEntryForPayslip.id}
+          employeeId={selectedEntryForPayslip.userId}
+          employeeName={`${selectedEntryForPayslip.employee?.firstName || ''} ${selectedEntryForPayslip.employee?.lastName || ''}`}
+          periodStart={selectedPeriod.startDate}
+          periodEnd={selectedPeriod.endDate}
+          open={payslipViewerOpen}
+          onClose={() => {
+            setPayslipViewerOpen(false);
+            setSelectedEntryForPayslip(null);
+          }}
+          isManagerView={true}
+        />
+      )}
     </Box>
   );
 }

@@ -4,6 +4,7 @@ import { format, parseISO } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { getCurrentUser } from "@/lib/auth";
+import DigitalPayslipViewer from "@/components/payslip/digital-payslip-viewer";
 
 // MUI Components
 import {
@@ -23,10 +24,6 @@ import {
   useTheme,
   Skeleton,
   LinearProgress,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Tabs,
   Tab,
   List,
@@ -39,8 +36,6 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Alert,
-  AlertTitle,
 } from "@mui/material";
 import Grid from "@mui/material/Grid";
 
@@ -58,8 +53,8 @@ import {
   CheckCircle as CheckCircleIcon,
   Schedule as ScheduleIcon,
   Visibility as ViewIcon,
-  Print as PrintIcon,
-  PictureAsPdf as PdfIcon,
+  Description as DescriptionIcon,
+  Refresh as RefreshIcon,
 } from "@mui/icons-material";
 
 interface PayrollEntry {
@@ -161,12 +156,27 @@ export default function MuiPayroll() {
       <Box sx={{ p: 3, minHeight: "100vh", bgcolor: "background.default" }}>
         {/* Header */}
         <Box sx={{ mb: 4 }}>
-          <Typography variant="h4" fontWeight={700} gutterBottom>
-            My Payroll
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            View your earnings, payslips, and payment history
-          </Typography>
+          <Stack direction="row" alignItems="center" justifyContent="space-between">
+            <Box>
+              <Typography variant="h4" fontWeight={700} gutterBottom>
+                My Payroll
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                View your earnings, payslips, and payment history • Updates in real-time
+              </Typography>
+            </Box>
+            <Tooltip title="Refresh data">
+              <IconButton 
+                onClick={() => { refetchPayroll(); refetchPeriod(); }}
+                sx={{ 
+                  bgcolor: alpha(theme.palette.primary.main, 0.1),
+                  '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.2) }
+                }}
+              >
+                <RefreshIcon />
+              </IconButton>
+            </Tooltip>
+          </Stack>
         </Box>
 
         {payrollLoading && <LinearProgress sx={{ mb: 3, borderRadius: 1 }} />}
@@ -399,12 +409,22 @@ export default function MuiPayroll() {
                             </Stack>
                           </TableCell>
                           <TableCell align="center">
-                            <IconButton size="small" onClick={() => handleViewPayslip(entry)}>
-                              <ViewIcon />
-                            </IconButton>
-                            <IconButton size="small">
-                              <DownloadIcon />
-                            </IconButton>
+                            <Stack direction="row" spacing={0.5} justifyContent="center">
+                              <Tooltip title="View digital payslip (PH — Compliant 2025)">
+                                <IconButton 
+                                  size="small" 
+                                  color="info"
+                                  onClick={() => handleViewPayslip(entry)}
+                                >
+                                  <DescriptionIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                              <Tooltip title="Download PDF">
+                                <IconButton size="small" onClick={() => handleViewPayslip(entry)}>
+                                  <DownloadIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            </Stack>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -461,105 +481,19 @@ export default function MuiPayroll() {
           </TabPanel>
         </Paper>
 
-        {/* Payslip Dialog */}
-        <Dialog
-          open={payslipDialogOpen}
-          onClose={() => setPayslipDialogOpen(false)}
-          maxWidth="md"
-          fullWidth
-          PaperProps={{ sx: { borderRadius: 3 } }}
-        >
-          <DialogTitle>
-            <Stack direction="row" alignItems="center" spacing={2}>
-              <Avatar sx={{ bgcolor: "primary.main" }}>
-                <ReceiptIcon />
-              </Avatar>
-              <Box>
-                <Typography variant="h6">Digital Payslip</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {selectedPayslip && format(parseISO(selectedPayslip.createdAt), "MMMM d, yyyy")}
-                </Typography>
-              </Box>
-            </Stack>
-          </DialogTitle>
-          <DialogContent dividers>
-            {selectedPayslip && (
-              <Box>
-                {selectedPayslip.blockchainHash && (
-                  <Alert severity="success" sx={{ mb: 3 }}>
-                    <AlertTitle>Blockchain Verified</AlertTitle>
-                    This payslip has been verified on the blockchain
-                  </Alert>
-                )}
-
-                <Grid container spacing={3}>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                      Hours Breakdown
-                    </Typography>
-                    <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
-                      <Stack spacing={1}>
-                        <Stack direction="row" justifyContent="space-between">
-                          <Typography>Regular Hours</Typography>
-                          <Typography fontWeight={600}>
-                            {parseFloat(String(selectedPayslip.regularHours)).toFixed(1)}h
-                          </Typography>
-                        </Stack>
-                        <Stack direction="row" justifyContent="space-between">
-                          <Typography>Overtime Hours</Typography>
-                          <Typography fontWeight={600}>
-                            {parseFloat(String(selectedPayslip.overtimeHours)).toFixed(1)}h
-                          </Typography>
-                        </Stack>
-                        <Divider />
-                        <Stack direction="row" justifyContent="space-between">
-                          <Typography fontWeight={600}>Total Hours</Typography>
-                          <Typography fontWeight={700}>
-                            {parseFloat(String(selectedPayslip.totalHours)).toFixed(1)}h
-                          </Typography>
-                        </Stack>
-                      </Stack>
-                    </Paper>
-                  </Grid>
-
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                      Pay Summary
-                    </Typography>
-                    <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
-                      <Stack spacing={1}>
-                        <Stack direction="row" justifyContent="space-between">
-                          <Typography>Gross Pay</Typography>
-                          <Typography fontWeight={600}>{formatCurrency(selectedPayslip.grossPay)}</Typography>
-                        </Stack>
-                        <Stack direction="row" justifyContent="space-between">
-                          <Typography color="error.main">Deductions</Typography>
-                          <Typography fontWeight={600} color="error.main">
-                            -{formatCurrency(selectedPayslip.deductions)}
-                          </Typography>
-                        </Stack>
-                        <Divider />
-                        <Stack direction="row" justifyContent="space-between">
-                          <Typography fontWeight={600}>Net Pay</Typography>
-                          <Typography fontWeight={700} color="success.main" variant="h6">
-                            {formatCurrency(selectedPayslip.netPay)}
-                          </Typography>
-                        </Stack>
-                      </Stack>
-                    </Paper>
-                  </Grid>
-                </Grid>
-              </Box>
-            )}
-          </DialogContent>
-          <DialogActions sx={{ p: 2 }}>
-            <Button startIcon={<PrintIcon />}>Print</Button>
-            <Button startIcon={<PdfIcon />}>Download PDF</Button>
-            <Button variant="contained" onClick={() => setPayslipDialogOpen(false)}>
-              Close
-            </Button>
-          </DialogActions>
-        </Dialog>
+        {/* Digital Payslip Viewer (PH-Compliant 2025) */}
+        {selectedPayslip && (
+          <DigitalPayslipViewer
+            payrollEntryId={selectedPayslip.id}
+            employeeId={currentUser?.id || ''}
+            employeeName={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : ''}
+            periodStart={selectedPayslip.createdAt}
+            periodEnd={selectedPayslip.createdAt}
+            open={payslipDialogOpen}
+            onClose={() => setPayslipDialogOpen(false)}
+            isManagerView={false}
+          />
+        )}
       </Box>
     </>
   );

@@ -569,6 +569,13 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(deductionRates);
   }
 
+  async getActiveDeductionRates(): Promise<DeductionRate[]> {
+    return await db
+      .select()
+      .from(deductionRates)
+      .where(eq(deductionRates.isActive, true));
+  }
+
   async getDeductionRatesByType(type: string): Promise<DeductionRate[]> {
     return await db
       .select()

@@ -120,6 +120,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     credentials: true
   }));
 
+  // Trust proxy for Render.com (required for secure cookies behind reverse proxy)
+  if (process.env.NODE_ENV === 'production') {
+    app.set('trust proxy', 1);
+  }
+
   // Session configuration
   app.use(session({
     secret: process.env.SESSION_SECRET || 'default-secret-key',
@@ -128,7 +133,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     cookie: {
       secure: process.env.NODE_ENV === 'production',
       httpOnly: true,
-      sameSite: 'lax',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 24 * 60 * 60 * 1000 // 24 hours
     }
   }));

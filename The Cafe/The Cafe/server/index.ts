@@ -9,7 +9,12 @@ import { recreateConnection } from "./db";
 
 const app = express();
 
-// CORS configuration for GitHub Codespaces
+// Trust proxy FIRST - required for Render.com (secure cookies behind reverse proxy)
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
+
+// CORS configuration
 app.use(cors({
   origin: true,
   credentials: true,

@@ -2340,9 +2340,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ═══════════════════════════════════════════════════════════════
-  // ADMIN: Force Seed Sample Data
+  // ADMIN: Force Seed Sample Data with Complete Shifts and Payroll
   // ═══════════════════════════════════════════════════════════════
-  app.post('/api/admin/seed-sample-data', requireAuth, requireRole(['admin']), async (req: Request, res: Response) => {
+  app.post('/api/admin/seed-sample-data', requireAuth, requireRole(['admin', 'manager']), async (req: Request, res: Response) => {
     try {
       const user = getAuthenticatedUser(req);
       if (!user) {
@@ -2350,97 +2350,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const branchId = user.branchId;
-      const hashedPassword = await bcrypt.hash('password123', 10);
-
-      // Sample employees for December 2025
-      const sampleEmployees = [
-        { 
-          username: 'juan', 
-          firstName: 'Juan Carlos', 
-          lastName: 'Dela Cruz', 
-          email: 'juan.delacruz@thecafe.ph', 
-          role: 'employee', 
-          position: 'Senior Barista', 
-          hourlyRate: '112.50',
-        },
-        { 
-          username: 'ana', 
-          firstName: 'Ana Marie', 
-          lastName: 'Garcia', 
-          email: 'ana.garcia@thecafe.ph', 
-          role: 'employee', 
-          position: 'Cashier', 
-          hourlyRate: '93.75',
-        },
-        { 
-          username: 'pedro', 
-          firstName: 'Pedro Miguel', 
-          lastName: 'Reyes', 
-          email: 'pedro.reyes@thecafe.ph', 
-          role: 'employee', 
-          position: 'Kitchen Staff', 
-          hourlyRate: '100.00',
-        },
-        { 
-          username: 'rosa', 
-          firstName: 'Rosa Linda', 
-          lastName: 'Fernandez', 
-          email: 'rosa.fernandez@thecafe.ph', 
-          role: 'employee', 
-          position: 'Barista', 
-          hourlyRate: '93.75',
-        },
-      ];
-
-      const createdEmployees: any[] = [];
-
-      // Create employees
-      for (const emp of sampleEmployees) {
-        try {
-          // Check if username already exists
-          const existing = await storage.getUserByUsername(emp.username);
-          if (existing) {
-            console.log(`User ${emp.username} already exists, skipping`);
-            continue;
-          }
-
-          const newUser = await storage.createUser({
-            username: emp.username,
-            password: hashedPassword,
-            firstName: emp.firstName,
-            lastName: emp.lastName,
-            email: emp.email,
-            role: emp.role,
-            position: emp.position,
-            hourlyRate: emp.hourlyRate,
-            branchId: branchId,
-            isActive: true,
-          });
-          createdEmployees.push(newUser);
-        } catch (err: any) {
-          console.log(`Error creating ${emp.username}:`, err.message);
-        }
+      
+      // Get all employees in this branch
+      const allEmployees = await storage.getEmployees(branchId);
+      const employees = allEmployees.filter(e => e.role === 'employee');
+      
+      if (employees.length === 0) {
+        return res.status(400).json({ message: "No employees found. Please add employees first." });
       }
 
-      // Create shifts for the new employees (past week + next week)
       const now = new Date();
+      let shiftsCreated = 0;
+      let shiftsUpdated = 0;
+
+      // Create completed shifts for the PAST 14 days with actual hours
       const shiftPatterns = [
-        { start: 6, end: 14 },   // Morning
-        { start: 10, end: 18 },  // Day
-        { start: 14, end: 22 },  // Afternoon
+        { start: 6, end: 14 },   // Morning 8 hours
+        { start: 8, end: 17 },   // Day 9 hours (with 1hr lunch)
+        { start: 14, end: 22 },  // Afternoon 8 hours
       ];
 
-      let shiftsCreated = 0;
-      for (const emp of createdEmployees) {
-        for (let day = -7; day <= 7; day++) {
-          // Skip some days randomly (day off)
-          if (Math.random() > 0.7) continue;
-          
+      for (const emp of employees) {
+        for (let day = -14; day <= 7; day++) {
           const shiftDate = new Date(now);
           shiftDate.setDate(shiftDate.getDate() + day);
           
           // Skip Sundays
           if (shiftDate.getDay() === 0) continue;
+          
+          // Employees work about 5 days a week (skip ~30% of days)
+          if (Math.random() > 0.7) continue;
 
           const pattern = shiftPatterns[Math.floor(Math.random() * shiftPatterns.length)];
           
@@ -2450,10 +2389,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const endTime = new Date(shiftDate);
           endTime.setHours(pattern.end, 0, 0, 0);
 
-          const status = day < 0 ? 'completed' : (day === 0 ? 'in-progress' : 'scheduled');
+          // Past shifts are completed with actual times
+          const isPast = day < 0;
+          const isToday = day === 0;
+          const status = isPast ? 'completed' : (isToday ? 'scheduled' : 'scheduled');
 
           try {
-            await storage.createShift({
+            const shift = await storage.createShift({
               userId: emp.id,
               branchId: branchId,
               startTime: startTime,
@@ -2461,49 +2403,112 @@ export async function registerRoutes(app: Express): Promise<Server> {
               position: emp.position,
               status: status,
             });
+
+            // For past shifts, set actual clock in/out times
+            if (isPast && shift) {
+              // Add slight variation to actual times (±15 mins)
+              const actualStart = new Date(startTime);
+              actualStart.setMinutes(actualStart.getMinutes() + Math.floor(Math.random() * 15) - 5);
+              
+              const actualEnd = new Date(endTime);
+              actualEnd.setMinutes(actualEnd.getMinutes() + Math.floor(Math.random() * 30)); // Sometimes OT
+              
+              await storage.updateShift(shift.id, {
+                status: 'completed',
+                actualStartTime: actualStart,
+                actualEndTime: actualEnd,
+              });
+              shiftsUpdated++;
+            }
             shiftsCreated++;
           } catch (err) {
-            // Ignore shift creation errors
+            // Ignore duplicate shift errors
           }
         }
       }
 
-      // Create a payroll period for current period (Dec 1-15, 2025)
+      // Now process payroll for the current period to generate entries with hours
+      // Get or create payroll period for Dec 1-15, 2025
+      const periodStart = new Date('2025-12-01');
+      const periodEnd = new Date('2025-12-15');
+      
       let payrollPeriod = null;
+      const existingPeriods = await storage.getPayrollPeriods(branchId);
+      payrollPeriod = existingPeriods.find(p => {
+        const pStart = new Date(p.startDate);
+        return pStart.getMonth() === 11 && pStart.getDate() <= 5;
+      });
+
+      if (!payrollPeriod) {
+        payrollPeriod = await storage.createPayrollPeriod({
+          branchId: branchId,
+          startDate: periodStart,
+          endDate: periodEnd,
+          status: 'open',
+          totalHours: '0',
+          totalPay: '0',
+        });
+      }
+
+      // Calculate and create payroll entries for each employee
       let entriesCreated = 0;
+      let totalPayrollAmount = 0;
 
-      if (createdEmployees.length > 0) {
+      for (const emp of employees) {
+        // Get completed shifts for this employee in the period
+        const empShifts = await storage.getShiftsByUser(emp.id);
+        const completedShifts = empShifts.filter(s => {
+          const shiftDate = new Date(s.startTime);
+          return s.status === 'completed' && 
+                 shiftDate >= periodStart && 
+                 shiftDate <= periodEnd;
+        });
+
+        // Calculate hours from completed shifts
+        let totalMinutes = 0;
+        for (const shift of completedShifts) {
+          const start = shift.actualStartTime || shift.startTime;
+          const end = shift.actualEndTime || shift.endTime;
+          const minutes = (new Date(end).getTime() - new Date(start).getTime()) / (1000 * 60);
+          totalMinutes += minutes;
+        }
+
+        // If no completed shifts, create some simulated hours
+        if (totalMinutes === 0) {
+          // Simulate 8-10 days of work, 8 hours each
+          const daysWorked = 8 + Math.floor(Math.random() * 3);
+          totalMinutes = daysWorked * 8 * 60;
+        }
+
+        const totalHours = totalMinutes / 60;
+        const regularHours = Math.min(totalHours, 88); // 88 hours = 11 days × 8 hours
+        const overtimeHours = Math.max(0, totalHours - 88);
+
+        const hourlyRate = parseFloat(emp.hourlyRate);
+        const basicPay = regularHours * hourlyRate;
+        const overtimePay = overtimeHours * hourlyRate * 1.25;
+        const grossPay = basicPay + overtimePay;
+
+        // Philippine deductions (2025 rates)
+        const sssContribution = grossPay >= 20000 ? 900 : grossPay >= 15000 ? 675 : grossPay >= 10000 ? 450 : 225;
+        const philhealthContribution = Math.min(grossPay * 0.025, 500);
+        const pagibigContribution = Math.min(grossPay * 0.02, 200);
+        const withholdingTax = grossPay > 20833 ? (grossPay - 20833) * 0.15 : 0;
+        const totalDeductions = sssContribution + philhealthContribution + pagibigContribution + withholdingTax;
+        const netPay = grossPay - totalDeductions;
+
+        totalPayrollAmount += netPay;
+
         try {
-          payrollPeriod = await storage.createPayrollPeriod({
-            branchId: branchId,
-            startDate: new Date('2025-12-01'),
-            endDate: new Date('2025-12-15'),
-            status: 'open',
-            totalHours: '0',
-            totalPay: '0',
-          });
-
-          // Create payroll entries for each new employee
-          for (const emp of createdEmployees) {
-            const hourlyRate = parseFloat(emp.hourlyRate);
-            const regularHours = 80;
-            const overtimeHours = Math.floor(Math.random() * 8);
-            const basicPay = regularHours * hourlyRate;
-            const overtimePay = overtimeHours * hourlyRate * 1.25;
-            const grossPay = basicPay + overtimePay;
-
-            // Philippine deductions
-            const sssContribution = grossPay >= 20000 ? 900 : grossPay >= 15000 ? 675 : grossPay >= 10000 ? 450 : 225;
-            const philhealthContribution = Math.min(grossPay * 0.025, 500);
-            const pagibigContribution = Math.min(grossPay * 0.02, 200);
-            const withholdingTax = grossPay > 20833 ? (grossPay - 20833) * 0.20 : 0;
-            const totalDeductions = sssContribution + philhealthContribution + pagibigContribution + withholdingTax;
-            const netPay = grossPay - totalDeductions;
-
+          // Check if entry already exists for this employee and period
+          const existingEntries = await storage.getPayrollEntriesByPeriod(payrollPeriod.id);
+          const hasEntry = existingEntries.some(e => e.userId === emp.id);
+          
+          if (!hasEntry) {
             await storage.createPayrollEntry({
               userId: emp.id,
               payrollPeriodId: payrollPeriod.id,
-              totalHours: (regularHours + overtimeHours).toFixed(2),
+              totalHours: totalHours.toFixed(2),
               regularHours: regularHours.toFixed(2),
               overtimeHours: overtimeHours.toFixed(2),
               nightDiffHours: '0',
@@ -2525,25 +2530,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
             entriesCreated++;
           }
         } catch (err: any) {
-          console.log('Error creating payroll period:', err.message);
+          console.log(`Error creating payroll entry for ${emp.firstName}:`, err.message);
         }
       }
 
+      // Update payroll period totals
+      const allEntries = await storage.getPayrollEntriesByPeriod(payrollPeriod.id);
+      const totalHoursAll = allEntries.reduce((sum, e) => sum + parseFloat(e.totalHours || '0'), 0);
+      const totalPayAll = allEntries.reduce((sum, e) => sum + parseFloat(e.netPay || '0'), 0);
+
+      await storage.updatePayrollPeriod(payrollPeriod.id, {
+        totalHours: totalHoursAll.toFixed(2),
+        totalPay: totalPayAll.toFixed(2),
+      });
+
       res.json({
         success: true,
-        message: 'Sample data seeded successfully',
+        message: 'Sample shifts and payroll data created successfully!',
         data: {
-          employeesCreated: createdEmployees.length,
+          employeesProcessed: employees.length,
           shiftsCreated: shiftsCreated,
-          payrollPeriodCreated: payrollPeriod ? 1 : 0,
+          shiftsWithHours: shiftsUpdated,
           payrollEntriesCreated: entriesCreated,
+          totalPayrollAmount: totalPayAll.toFixed(2),
         },
-        employees: createdEmployees.map(e => ({
-          username: e.username,
-          name: `${e.firstName} ${e.lastName}`,
-          position: e.position,
-          password: 'password123',
-        })),
+        instructions: 'Refresh the page to see the updated data. Go to Payroll > View to see employee entries.',
       });
     } catch (error: any) {
       console.error('Seed sample data error:', error);

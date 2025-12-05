@@ -86,6 +86,35 @@ export interface PayslipPaymentMethod {
   check_number?: string;
 }
 
+// Payslip Status (for workflow management)
+export type PayslipStatus = 'draft' | 'ready' | 'sent' | 'paid';
+export type DeliveryMethod = 'email' | 'portal' | 'print';
+
+// Payslip Metadata (Admin/Manager visible)
+export interface PayslipMetadata {
+  status: PayslipStatus;
+  generated_at: string;
+  approved_at?: string;
+  sent_at?: string;
+  delivery_method?: DeliveryMethod;
+  prepared_by?: string;
+  approved_by?: string;
+  remarks?: string;
+}
+
+// Attendance Summary (for Admin/Manager view)
+export interface PayslipAttendance {
+  days_worked?: number;
+  late_hours?: number;
+  undertime_hours?: number;
+  overtime_hours?: number;
+  night_diff_hours?: number;
+  absent_days?: number;
+  vl_taken?: number;
+  sl_taken?: number;
+  other_leaves?: number;
+}
+
 // Complete Payslip Data Structure
 export interface PayslipData {
   payslip_id: string;
@@ -95,6 +124,7 @@ export interface PayslipData {
   earnings: PayslipEarning[];
   deductions: PayslipDeduction[];
   gross: number;
+  gross_pay?: number;           // Alias for compatibility
   total_deductions: number;
   net_pay: number;
   ytd: PayslipYTD;
@@ -104,6 +134,24 @@ export interface PayslipData {
   verification_url?: string;
   notes?: string;
   generated_at?: string;
+  
+  // New fields for role-based views
+  metadata?: PayslipMetadata;
+  attendance?: PayslipAttendance;
+  
+  // Legacy period alias (for backward compatibility)
+  period?: {
+    start_date: string;
+    end_date: string;
+    pay_date: string;
+  };
+  
+  // Summary alias (for backward compatibility)
+  summary?: {
+    gross_pay: number;
+    total_deductions: number;
+    net_pay: number;
+  };
   
   // Breakdown details (optional, for detailed view)
   breakdown?: {

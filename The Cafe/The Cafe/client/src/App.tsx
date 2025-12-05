@@ -32,6 +32,7 @@ import MuiLogin from "@/pages/mui-login";
 import MuiDeductionSettings from "@/pages/mui-deduction-settings";
 import MuiPayrollManagement from "@/pages/mui-payroll-management";
 import MuiAdminDeductionRates from "@/pages/mui-admin-deduction-rates";
+import PayslipDemo from "@/pages/payslip-demo";
 import Setup from "@/pages/setup";
 import NotFound from "@/pages/not-found";
 
@@ -301,6 +302,13 @@ function DesktopRouter({ authState }: { authState: { isAuthenticated: boolean; u
             <MuiAdminDeductionRates />
           </DesktopLayout>
         </RequireAdmin>
+      </Route>
+
+      {/* Payslip Demo - Role-Based Views */}
+      <Route path="/payslip-demo">
+        <DesktopLayout>
+          <PayslipDemo />
+        </DesktopLayout>
       </Route>
 
       {/* 404 */}

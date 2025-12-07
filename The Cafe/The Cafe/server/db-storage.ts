@@ -86,15 +86,27 @@ export class DatabaseStorage implements IStorage {
       const created = await this.getUser(id);
       if (!created) {
         console.error('User was inserted but could not be retrieved:', id);
-        throw new Error('Failed to create user');
+        throw new Error('Failed to create user - database record not found after insertion');
       }
 
       console.log('User created successfully:', created.username);
       console.log('Stored password hash starts with:', created.password.substring(0, 10));
 
       return created;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error in createUser:', error);
+      
+      // Improve error messages
+      if (error.message?.includes('UNIQUE constraint')) {
+        if (error.message?.includes('username')) {
+          throw new Error('Username already exists');
+        } else if (error.message?.includes('email')) {
+          throw new Error('Email already in use');
+        } else if (error.message?.includes('users_username_unique')) {
+          throw new Error('Username already exists');
+        }
+      }
+      
       throw error;
     }
   }

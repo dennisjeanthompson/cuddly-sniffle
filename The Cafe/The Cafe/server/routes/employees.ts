@@ -256,13 +256,34 @@ router.post('/api/employees', requireAuth, requireRole(['manager']), async (req,
       isActive,
     });
 
+    if (!newEmployee) {
+      return res.status(500).json({ message: 'Failed to create employee in database' });
+    }
+
     // Don't send back the password
     const { password: _, ...result } = newEmployee;
 
     res.status(201).json(result);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating employee:', error);
-    res.status(500).json({ message: 'Failed to create employee' });
+    
+    // Provide more detailed error messages based on the error
+    let message = 'Failed to create employee';
+    if (error.message?.includes('UNIQUE constraint failed')) {
+      if (error.message?.includes('username')) {
+        message = 'Username already exists';
+      } else if (error.message?.includes('email')) {
+        message = 'Email already in use';
+      }
+    } else if (error.message?.includes('Username already exists')) {
+      message = 'Username already exists';
+    } else if (error.message?.includes('Email already in use')) {
+      message = 'Email already in use';
+    } else if (error.message) {
+      message = error.message;
+    }
+    
+    res.status(500).json({ message });
   }
 });
 

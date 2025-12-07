@@ -14,9 +14,35 @@ if (process.env.NODE_ENV === 'production') {
   app.set('trust proxy', 1);
 }
 
-// CORS configuration
+// CORS configuration - allow same-origin and specific production URLs
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:5000', 
+  'http://localhost:5001',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:5000',
+  'http://127.0.0.1:5001',
+  'https://donmacchiatos.onrender.com',
+  process.env.RENDER_EXTERNAL_URL,
+].filter(Boolean);
+
 app.use(cors({
-  origin: true,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, curl requests, server-to-server)
+    if (!origin) return callback(null, true);
+    
+    // In production, only allow specific origins; in development, allow all
+    if (process.env.NODE_ENV === 'production') {
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        console.log(`CORS blocked origin: ${origin}`);
+        callback(new Error('Not allowed by CORS'));
+      }
+    } else {
+      callback(null, true);
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']

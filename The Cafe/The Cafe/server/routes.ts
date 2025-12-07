@@ -122,14 +122,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Session configuration (trust proxy is set in index.ts)
   app.use(session({
-    secret: process.env.SESSION_SECRET || 'default-secret-key',
+    secret: process.env.SESSION_SECRET || 'cafe-default-secret-key-2024',
     resave: false,
     saveUninitialized: false,
     cookie: {
       secure: process.env.NODE_ENV === 'production',
       httpOnly: true,
-      sameSite: 'lax',
-      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      domain: process.env.NODE_ENV === 'production' ? '.onrender.com' : undefined
     }
   }));
 

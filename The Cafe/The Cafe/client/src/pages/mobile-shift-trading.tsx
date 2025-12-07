@@ -45,6 +45,10 @@ export default function MobileShiftTrading() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<"available" | "my">("available");
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [requestFormData, setRequestFormData] = useState({
+    reason: "",
+  });
 
   // Fetch available shifts with real-time updates
   const { data: availableData, isLoading: loadingAvailable, refetch: refetchAvailable } = useQuery({
@@ -77,15 +81,18 @@ export default function MobileShiftTrading() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['mobile-shift-trades-available'] });
       queryClient.invalidateQueries({ queryKey: ['mobile-shift-trades-my'] });
+      console.log("✅ Shift trade request sent successfully");
       toast({
         title: "Request Sent! 🎉",
         description: "Your shift trade request has been sent for approval",
       });
     },
     onError: (error: any) => {
+      console.error("❌ Failed to take shift:", error);
+      const message = error?.message || "Failed to take shift";
       toast({
         title: "Error",
-        description: error.message || "Failed to take shift",
+        description: message,
         variant: "destructive",
       });
     },
@@ -97,15 +104,18 @@ export default function MobileShiftTrading() {
       apiRequest("DELETE", `/api/shift-trades/${tradeId}`, {}),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['mobile-shift-trades-my'] });
+      console.log("✅ Shift trade cancelled successfully");
       toast({
         title: "Trade Cancelled",
         description: "Your shift trade has been cancelled",
       });
     },
     onError: (error: any) => {
+      console.error("❌ Failed to cancel trade:", error);
+      const message = error?.message || "Failed to cancel trade";
       toast({
         title: "Error",
-        description: error.message || "Failed to cancel trade",
+        description: message,
         variant: "destructive",
       });
     },
@@ -264,36 +274,46 @@ export default function MobileShiftTrading() {
       />
 
       <div className="p-5 space-y-5">
-        {/* Tab Switcher */}
-        <div className="flex gap-2 bg-muted p-1.5 rounded-xl">
-          <button
-            onClick={() => setActiveTab("available")}
-            className={`flex-1 py-3.5 px-4 rounded-lg font-bold text-base transition-all flex items-center justify-center gap-2 ${
-              activeTab === "available"
-                ? "bg-background text-foreground shadow-md"
-                : "text-muted-foreground"
-            }`}
+        {/* Tab Switcher with Request Button */}
+        <div className="flex gap-2">
+          <div className="flex-1 flex gap-2 bg-muted p-1.5 rounded-xl">
+            <button
+              onClick={() => setActiveTab("available")}
+              className={`flex-1 py-3.5 px-4 rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                activeTab === "available"
+                  ? "bg-background text-foreground shadow-md"
+                  : "text-muted-foreground"
+              }`}
+            >
+              <Users className="h-5 w-5" />
+              Available
+              {availableTrades.length > 0 && (
+                <Badge variant="default" className="ml-1">{availableTrades.length}</Badge>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab("my")}
+              className={`flex-1 py-3.5 px-4 rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                activeTab === "my"
+                  ? "bg-background text-foreground shadow-md"
+                  : "text-muted-foreground"
+              }`}
+            >
+              <ArrowRightLeft className="h-5 w-5" />
+              My Trades
+              {myTrades.length > 0 && (
+                <Badge variant="secondary" className="ml-1">{myTrades.length}</Badge>
+              )}
+            </button>
+          </div>
+          <Button
+            size="lg"
+            className="px-4 py-3.5 h-auto rounded-lg"
+            onClick={() => setShowRequestModal(true)}
           >
-            <Users className="h-5 w-5" />
-            Available
-            {availableTrades.length > 0 && (
-              <Badge variant="default" className="ml-1">{availableTrades.length}</Badge>
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab("my")}
-            className={`flex-1 py-3.5 px-4 rounded-lg font-bold text-base transition-all flex items-center justify-center gap-2 ${
-              activeTab === "my"
-                ? "bg-background text-foreground shadow-md"
-                : "text-muted-foreground"
-            }`}
-          >
-            <ArrowRightLeft className="h-5 w-5" />
-            My Trades
-            {myTrades.length > 0 && (
-              <Badge variant="secondary" className="ml-1">{myTrades.length}</Badge>
-            )}
-          </button>
+            <ArrowRightLeft className="h-5 w-5 mr-2" />
+            Request
+          </Button>
         </div>
 
         {/* Content */}
@@ -363,6 +383,81 @@ export default function MobileShiftTrading() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Request Shift Modal */}
+      <AnimatePresence>
+        {showRequestModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowRequestModal(false)}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-background rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4"
+            >
+              <div>
+                <h2 className="text-2xl font-bold mb-2">Request Shift Trade</h2>
+                <p className="text-muted-foreground">
+                  Tell your coworkers and manager why you want to trade
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <label className="block text-sm font-semibold">
+                  Reason for Trade
+                </label>
+                <textarea
+                  value={requestFormData.reason}
+                  onChange={(e) => setRequestFormData({ ...requestFormData, reason: e.target.value })}
+                  placeholder="E.g., Personal appointment, need to swap schedules, etc."
+                  className="w-full px-4 py-3 rounded-lg border border-input bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  rows={4}
+                />
+              </div>
+
+              <div className="pt-4 flex gap-3">
+                <Button
+                  variant="outline"
+                  className="flex-1 h-12 text-base font-semibold"
+                  onClick={() => {
+                    setShowRequestModal(false);
+                    setRequestFormData({ reason: "" });
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="flex-1 h-12 text-base font-semibold"
+                  onClick={() => {
+                    if (requestFormData.reason.trim()) {
+                      toast({
+                        title: "Got your request!",
+                        description: "Please select a shift from the available shifts tab",
+                      });
+                      setShowRequestModal(false);
+                      setRequestFormData({ reason: "" });
+                      setActiveTab("available");
+                    } else {
+                      toast({
+                        title: "Please enter a reason",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                >
+                  Continue
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <MuiMobileBottomNav />
     </div>

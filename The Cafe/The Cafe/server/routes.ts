@@ -1531,11 +1531,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...tradeData,
         fromUserId: fromUserId,
       });
+
+      // Enrich trade with shift and user data
+      const enrichedTrade = {
+        ...trade,
+        shift: shift ? {
+          date: shift.startTime ? new Date(shift.startTime).toISOString().split('T')[0] : null,
+          startTime: shift.startTime ? new Date(shift.startTime).toISOString() : null,
+          endTime: shift.endTime ? new Date(shift.endTime).toISOString() : null,
+          position: shift.position,
+        } : null,
+      };
       
-      res.json({ trade });
-    } catch (error) {
+      console.log(`✅ Shift trade created: ${trade.id} by user ${fromUserId}`);
+      res.json({ trade: enrichedTrade });
+    } catch (error: any) {
       console.error("Create trade error:", error);
-      res.status(400).json({ message: "Invalid trade data" });
+      res.status(400).json({ message: error.message || "Invalid trade data" });
     }
   });
 
@@ -1563,8 +1575,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const updatedTrade = await storage.updateShiftTrade(id, updateData);
+
+      // Enrich with shift data
+      const shift = await storage.getShift(trade.shiftId);
+      const enrichedTrade = {
+        ...updatedTrade,
+        shift: shift ? {
+          date: shift.startTime ? new Date(shift.startTime).toISOString().split('T')[0] : null,
+          startTime: shift.startTime ? new Date(shift.startTime).toISOString() : null,
+          endTime: shift.endTime ? new Date(shift.endTime).toISOString() : null,
+          position: shift.position,
+        } : null,
+      };
       
-      res.json({ trade: updatedTrade });
+      console.log(`📝 Shift trade ${id} status updated to ${status} by user ${userId}`);
+      res.json({ trade: enrichedTrade });
     } catch (error: any) {
       console.error("Respond to trade error:", error);
       res.status(500).json({ message: error.message || "Failed to respond to trade" });
@@ -1604,7 +1629,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         approvedAt: new Date()
       });
 
-      res.json({ trade: updatedTrade });
+      // Enrich with shift data
+      const shift = await storage.getShift(trade.shiftId);
+      const enrichedTrade = {
+        ...updatedTrade,
+        shift: shift ? {
+          date: shift.startTime ? new Date(shift.startTime).toISOString().split('T')[0] : null,
+          startTime: shift.startTime ? new Date(shift.startTime).toISOString() : null,
+          endTime: shift.endTime ? new Date(shift.endTime).toISOString() : null,
+          position: shift.position,
+        } : null,
+      };
+
+      const action = status === "approved" ? "✅ approved" : "❌ rejected";
+      console.log(`${action} shift trade ${id} by manager ${managerId}`);
+      res.json({ trade: enrichedTrade });
     } catch (error: any) {
       console.error("Manager approve trade error:", error);
       res.status(500).json({ message: error.message || "Failed to process trade" });
@@ -1612,25 +1651,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.put("/api/shift-trades/:id/take", requireAuth, async (req, res) => {
-    const { id } = req.params;
-    const userId = req.user!.id;
-    
-    const trade = await storage.getShiftTrade(id);
-    if (!trade) {
-      return res.status(404).json({ message: "Trade not found" });
-    }
+    try {
+      const { id } = req.params;
+      const userId = req.user!.id;
+      
+      const trade = await storage.getShiftTrade(id);
+      if (!trade) {
+        return res.status(404).json({ message: "Trade not found" });
+      }
 
-    // If trade is direct to someone else, I can't take it
-    if (trade.toUserId && trade.toUserId !== userId) {
-      return res.status(403).json({ message: "This trade is reserved for another employee" });
-    }
+      // If trade is direct to someone else, I can't take it
+      if (trade.toUserId && trade.toUserId !== userId) {
+        return res.status(403).json({ message: "This trade is reserved for another employee" });
+      }
 
-    const updatedTrade = await storage.updateShiftTrade(id, {
-      toUserId: userId,
-      status: "pending", // Still needs manager approval
-    });
-    
-    res.json({ trade: updatedTrade });
+      const updatedTrade = await storage.updateShiftTrade(id, {
+        toUserId: userId,
+        status: "pending", // Still needs manager approval
+      });
+
+      // Enrich with shift data
+      const shift = await storage.getShift(trade.shiftId);
+      const enrichedTrade = {
+        ...updatedTrade,
+        shift: shift ? {
+          date: shift.startTime ? new Date(shift.startTime).toISOString().split('T')[0] : null,
+          startTime: shift.startTime ? new Date(shift.startTime).toISOString() : null,
+          endTime: shift.endTime ? new Date(shift.endTime).toISOString() : null,
+          position: shift.position,
+        } : null,
+      };
+
+      console.log(`✅ User ${userId} took shift trade ${id}`);
+      res.json({ trade: enrichedTrade });
+    } catch (error: any) {
+      console.error("Take shift trade error:", error);
+      res.status(500).json({ message: error.message || "Failed to take shift" });
+    }
   });
 
   app.put("/api/shift-trades/:id/approve", requireAuth, requireRole(["manager", "admin"]), async (req, res) => {
@@ -1676,7 +1733,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         data: JSON.stringify({ tradeId: id })
       } as any);
 
-      res.json({ trade: updatedTrade });
+      // Enrich with shift data
+      const shift = await storage.getShift(trade.shiftId);
+      const enrichedTrade = {
+        ...updatedTrade,
+        shift: shift ? {
+          date: shift.startTime ? new Date(shift.startTime).toISOString().split('T')[0] : null,
+          startTime: shift.startTime ? new Date(shift.startTime).toISOString() : null,
+          endTime: shift.endTime ? new Date(shift.endTime).toISOString() : null,
+          position: shift.position,
+        } : null,
+      };
+
+      console.log(`✅ Shift trade ${id} approved by manager ${managerId}`);
+      res.json({ trade: enrichedTrade });
     } catch (error: any) {
       console.error("Approve trade error:", error);
       res.status(500).json({ message: error.message || "Failed to approve trade" });
@@ -1708,10 +1778,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
         data: JSON.stringify({ tradeId: id })
       } as any);
 
-      res.json({ trade: updatedTrade });
+      // Enrich with shift data
+      const shift = await storage.getShift(trade.shiftId);
+      const enrichedTrade = {
+        ...updatedTrade,
+        shift: shift ? {
+          date: shift.startTime ? new Date(shift.startTime).toISOString().split('T')[0] : null,
+          startTime: shift.startTime ? new Date(shift.startTime).toISOString() : null,
+          endTime: shift.endTime ? new Date(shift.endTime).toISOString() : null,
+          position: shift.position,
+        } : null,
+      };
+
+      console.log(`❌ Shift trade ${id} rejected by manager ${managerId}`);
+      res.json({ trade: enrichedTrade });
     } catch (error: any) {
       console.error("Reject trade error:", error);
       res.status(500).json({ message: error.message || "Failed to reject trade" });
+    }
+  });
+
+  // DELETE endpoint for canceling shift trades
+  app.delete("/api/shift-trades/:id", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user!.id;
+
+      const trade = await storage.getShiftTrade(id);
+      if (!trade) {
+        return res.status(404).json({ message: "Trade not found" });
+      }
+
+      // Only the requester can delete a pending trade
+      if (trade.fromUserId !== userId && req.user!.role !== "admin") {
+        return res.status(403).json({ message: "You cannot delete this trade" });
+      }
+
+      // Only allow deletion of pending trades
+      if (trade.status !== "pending") {
+        return res.status(400).json({ message: "Can only cancel pending trades" });
+      }
+
+      // Update the trade status to 'cancelled'
+      const updatedTrade = await storage.updateShiftTrade(id, {
+        status: "cancelled"
+      });
+
+      // Notify target user if one was selected
+      if (trade.toUserId) {
+        await storage.createNotification({
+          userId: trade.toUserId,
+          type: 'schedule',
+          title: 'Shift Trade Cancelled',
+          message: 'A shift trade request has been cancelled.',
+          data: JSON.stringify({ tradeId: id })
+        } as any);
+      }
+
+      // Enrich with shift data
+      const shift = await storage.getShift(trade.shiftId);
+      const enrichedTrade = {
+        ...updatedTrade,
+        shift: shift ? {
+          date: shift.startTime ? new Date(shift.startTime).toISOString().split('T')[0] : null,
+          startTime: shift.startTime ? new Date(shift.startTime).toISOString() : null,
+          endTime: shift.endTime ? new Date(shift.endTime).toISOString() : null,
+          position: shift.position,
+        } : null,
+      };
+
+      console.log(`🗑️  Shift trade ${id} cancelled by user ${userId}`);
+      res.json({ 
+        message: "Trade cancelled successfully",
+        trade: enrichedTrade 
+      });
+    } catch (error: any) {
+      console.error("Delete shift trade error:", error);
+      res.status(500).json({ message: error.message || "Failed to cancel trade" });
     }
   });
 

@@ -163,12 +163,14 @@ export default function MuiShiftTrading() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["shift-trades"] });
+      console.log("✅ Shift trade request created successfully");
       toast({ title: "Trade request sent" });
       setCreateDialogOpen(false);
       setFormData({ shiftId: "", targetUserId: "", reason: "" });
     },
-    onError: () => {
-      toast({ title: "Failed to send request", variant: "destructive" });
+    onError: (error: any) => {
+      console.error("❌ Failed to create trade:", error);
+      toast({ title: "Failed to send request", description: error?.message, variant: "destructive" });
     },
   });
 
@@ -182,7 +184,12 @@ export default function MuiShiftTrading() {
     },
     onSuccess: (_, { accept }) => {
       queryClient.invalidateQueries({ queryKey: ["shift-trades"] });
+      console.log(`✅ Shift trade ${accept ? "accepted" : "rejected"} successfully`);
       toast({ title: accept ? "Trade accepted" : "Trade rejected" });
+    },
+    onError: (error: any) => {
+      console.error("❌ Failed to respond to trade:", error);
+      toast({ title: "Failed to respond to trade", description: error?.message, variant: "destructive" });
     },
   });
 
@@ -196,7 +203,12 @@ export default function MuiShiftTrading() {
     },
     onSuccess: (_, { approve }) => {
       queryClient.invalidateQueries({ queryKey: ["shift-trades"] });
+      console.log(`✅ Shift trade ${approve ? "approved" : "rejected"} by manager`);
       toast({ title: approve ? "Trade approved" : "Trade rejected" });
+    },
+    onError: (error: any) => {
+      console.error("❌ Failed to approve/reject trade:", error);
+      toast({ title: "Failed to process trade", description: error?.message, variant: "destructive" });
     },
   });
 

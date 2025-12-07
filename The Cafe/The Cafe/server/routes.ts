@@ -17,9 +17,15 @@ import bcrypt from "bcrypt";
 import { format } from "date-fns";
 import crypto from "crypto";
 import { validateShiftTimes, calculatePeriodPay, calculateShiftPay, buildPayrollEntryBreakdownPayload } from "./payroll-utils";
+import { Pool } from "@neondatabase/serverless";
 
 // Use database storage instead of in-memory storage
 const storage = dbStorage;
+
+// Create PostgreSQL pool for session store
+const pgPool = new Pool({ 
+  connectionString: process.env.DATABASE_URL || 'postgresql://localhost/cafe'
+});
 
 // Type for authenticated user
 interface AuthUser {
@@ -101,27 +107,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // CORS is configured in index.ts
 
 
-  // Session configuration (trust proxy is set in index.ts)
-  // Use simple but robust in-memory session store
-  // Sessions will be maintained in memory and cookies will handle persistence across requests
+  // Session configuration using PostgreSQL for production reliability
+  const PgSessionStore = PgSession(session);
+  
   const sessionConfig: any = {
+    store: new PgSessionStore({
+      pool: pgPool,
+      tableName: 'session',
+      createTableIfMissing: true,
+      ttl: 24 * 60 * 60, // 24 hours in seconds
+      disableTouch: false, // Allow touch to refresh session
+    }),
     secret: process.env.SESSION_SECRET || 'cafe-default-secret-key-2024',
-    resave: true, // Force session to be saved even if unmodified (important for production)
-    saveUninitialized: true, // Save uninitialized session (important for first-time requests)
+    resave: false,
+    saveUninitialized: false,
     name: 'cafe-session',
-    proxy: process.env.NODE_ENV === 'production', // Trust X-Forwarded-* headers on Render
+    proxy: process.env.NODE_ENV === 'production',
     cookie: {
-      secure: process.env.NODE_ENV === 'production', // HTTPS only in production
-      httpOnly: true, // Prevent JavaScript access (security)
-      sameSite: process.env.NODE_ENV === 'production' ? 'lax' : 'lax', // Use lax for better compatibility
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
-      path: '/',
-      domain: undefined // Let the browser handle domain
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: true,
+      sameSite: 'lax',
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours in milliseconds
+      path: '/'
     }
   };
 
-  // Use in-memory store (simple and reliable)
-  // For production scale, implement Redis session store separately
+  // Use PostgreSQL session store
   app.use(session(sessionConfig));
 
   // Middleware: Ensure session is always touched and saved

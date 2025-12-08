@@ -80,6 +80,26 @@ export function WeekShiftPicker({
   const createShiftsMutation = useMutation({
     mutationFn: async (shiftsToCreate: Shift[]) => {
       const results = [];
+      
+      // Validate shifts before creation
+      const shiftsByDate: { [key: string]: Shift[] } = {};
+      for (const shift of shiftsToCreate) {
+        if (!shift.startTime || !shift.endTime) continue; // Skip "Day Off"
+        
+        const dateKey = shift.date;
+        if (!shiftsByDate[dateKey]) {
+          shiftsByDate[dateKey] = [];
+        }
+        shiftsByDate[dateKey].push(shift);
+      }
+
+      // Check for multiple shifts on same day
+      for (const [date, shiftsOnDate] of Object.entries(shiftsByDate)) {
+        if (shiftsOnDate.length > 1) {
+          throw new Error(`Cannot create multiple shifts on the same day (${date}). Only one shift per day is allowed.`);
+        }
+      }
+
       for (const shift of shiftsToCreate) {
         if (!shift.startTime || !shift.endTime) continue; // Skip "Day Off"
 
@@ -89,6 +109,11 @@ export function WeekShiftPicker({
         // If end time is before start time (night shift), add a day
         if (endDateTime <= startDateTime) {
           endDateTime.setDate(endDateTime.getDate() + 1);
+        }
+
+        // Validate shift time
+        if (startDateTime >= endDateTime) {
+          throw new Error(`Invalid shift times for ${shift.date}: start time must be before end time.`);
         }
 
         const response = await apiRequest("POST", "/api/shifts", {

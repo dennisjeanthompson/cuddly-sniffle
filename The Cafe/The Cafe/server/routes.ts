@@ -501,6 +501,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: timeError });
       }
 
+      // Check for overlapping shifts with the same employee
+      const overlappingShift = await storage.checkShiftOverlap(
+        shiftData.userId,
+        new Date(shiftData.startTime),
+        new Date(shiftData.endTime)
+      );
+
+      if (overlappingShift) {
+        const existingStart = new Date(overlappingShift.startTime);
+        const existingEnd = new Date(overlappingShift.endTime);
+        return res.status(409).json({
+          message: `Employee already has a shift scheduled from ${existingStart.toLocaleString()} to ${existingEnd.toLocaleString()}. Please choose a different time or remove the conflicting shift.`,
+          code: 'SHIFT_CONFLICT',
+          conflictingShift: overlappingShift
+        });
+      }
+
+      // Check if employee already has a shift on this date
+      const shiftDate = new Date(shiftData.startTime);
+      const existingShiftsOnDate = await storage.checkShiftOnDate(shiftData.userId, shiftDate);
+
+      if (existingShiftsOnDate.length > 0) {
+        const existingTimes = existingShiftsOnDate
+          .map(s => `${new Date(s.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(s.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`)
+          .join(', ');
+        
+        return res.status(409).json({
+          message: `Employee already has ${existingShiftsOnDate.length} shift(s) scheduled for this date: ${existingTimes}. Multiple shifts on the same day are not allowed.`,
+          code: 'DUPLICATE_SHIFT_DATE',
+          existingShifts: existingShiftsOnDate
+        });
+      }
+
       const shift = await storage.createShift(shiftData);
       res.json({ shift });
     } catch (error: any) {
@@ -524,11 +557,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const updateData = insertShiftSchema.partial().parse(req.body);
 
+      // Get the existing shift first to validate changes
+      const existingShift = await storage.getShift(id);
+      if (!existingShift) {
+        return res.status(404).json({ message: "Shift not found" });
+      }
+
+      // Determine the new shift times (use existing if not provided)
+      const newStartTime = updateData.startTime ? new Date(updateData.startTime) : new Date(existingShift.startTime);
+      const newEndTime = updateData.endTime ? new Date(updateData.endTime) : new Date(existingShift.endTime);
+      const newUserId = updateData.userId || existingShift.userId;
+
       // If both times are provided, validate them
       if (updateData.startTime && updateData.endTime) {
         const timeError = validateShiftTimes(updateData.startTime, updateData.endTime);
         if (timeError) {
           return res.status(400).json({ message: timeError });
+        }
+      }
+
+      // Check for overlapping shifts (excluding current shift)
+      if (updateData.startTime || updateData.endTime || updateData.userId) {
+        const overlappingShift = await storage.checkShiftOverlap(newUserId, newStartTime, newEndTime, id);
+        
+        if (overlappingShift) {
+          const existingStart = new Date(overlappingShift.startTime);
+          const existingEnd = new Date(overlappingShift.endTime);
+          return res.status(409).json({
+            message: `Employee already has a shift scheduled from ${existingStart.toLocaleString()} to ${existingEnd.toLocaleString()}. Please choose a different time.`,
+            code: 'SHIFT_CONFLICT',
+            conflictingShift: overlappingShift
+          });
+        }
+
+        // Check if employee already has another shift on this date
+        const shiftsOnDate = await storage.checkShiftOnDate(newUserId, newStartTime, id);
+        if (shiftsOnDate.length > 0) {
+          const existingTimes = shiftsOnDate
+            .map(s => `${new Date(s.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(s.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`)
+            .join(', ');
+          
+          return res.status(409).json({
+            message: `Employee already has ${shiftsOnDate.length} shift(s) scheduled for this date: ${existingTimes}. Multiple shifts on the same day are not allowed.`,
+            code: 'DUPLICATE_SHIFT_DATE',
+            existingShifts: shiftsOnDate
+          });
         }
       }
 
@@ -540,6 +613,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ shift });
     } catch (error) {
+      console.error('Update shift error:', error);
       res.status(400).json({ message: "Invalid shift data" });
     }
   });

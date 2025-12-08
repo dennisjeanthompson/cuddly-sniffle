@@ -2,7 +2,7 @@ import { db } from './db';
 import { branches, users, shifts, shiftTrades, payrollPeriods, payrollEntries, approvals, timeOffRequests, notifications, setupStatus, deductionSettings, deductionRates, holidays, archivedPayrollPeriods } from '@shared/schema';
 import type { IStorage } from './storage';
 import type { User, InsertUser, Branch, InsertBranch, Shift, InsertShift, ShiftTrade, InsertShiftTrade, PayrollPeriod, InsertPayrollPeriod, PayrollEntry, InsertPayrollEntry, Approval, InsertApproval, InsertTimeOffRequest, InsertNotification, DeductionSettings, InsertDeductionSettings, DeductionRate, InsertDeductionRate, Holiday, InsertHoliday, ArchivedPayrollPeriod, InsertArchivedPayrollPeriod } from '@shared/schema';
-import { eq, and, gte, lte, desc } from 'drizzle-orm';
+import { eq, and, gte, lte, desc, sql } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import bcrypt from 'bcrypt';
 
@@ -166,6 +166,58 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Shifts
+  
+  /**
+   * Check if a shift overlaps with existing shifts for the same user
+   * Overlapping means: shift times intersect, even partially
+   */
+  async checkShiftOverlap(userId: string, startTime: Date, endTime: Date, excludeShiftId?: string): Promise<Shift | null> {
+    let query = db.select().from(shifts).where(
+      and(
+        eq(shifts.userId, userId),
+        // Shift overlaps if: new_start < existing_end AND new_end > existing_start
+        and(
+          lte(shifts.startTime, endTime),
+          gte(shifts.endTime, startTime)
+        )
+      )
+    );
+    
+    // Exclude the current shift if updating
+    if (excludeShiftId) {
+      query = query.where(sql`${shifts.id} != ${excludeShiftId}`);
+    }
+    
+    const result = await query.limit(1);
+    return result[0] || null;
+  }
+
+  /**
+   * Check if an employee already has a shift on a specific date
+   */
+  async checkShiftOnDate(userId: string, date: Date, excludeShiftId?: string): Promise<Shift[]> {
+    // Get start and end of the day
+    const dayStart = new Date(date);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(date);
+    dayEnd.setHours(23, 59, 59, 999);
+    
+    let query = db.select().from(shifts).where(
+      and(
+        eq(shifts.userId, userId),
+        gte(shifts.startTime, dayStart),
+        lte(shifts.startTime, dayEnd)
+      )
+    );
+    
+    // Exclude the current shift if updating
+    if (excludeShiftId) {
+      query = query.where(sql`${shifts.id} != ${excludeShiftId}`);
+    }
+    
+    return query.orderBy(shifts.startTime);
+  }
+
   async createShift(shift: InsertShift): Promise<Shift> {
     const id = randomUUID();
     await db.insert(shifts).values({

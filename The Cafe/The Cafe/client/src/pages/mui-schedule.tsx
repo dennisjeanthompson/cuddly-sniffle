@@ -210,6 +210,37 @@ export default function MuiSchedule() {
         endDateTime = addDays(endDateTime, 1);
       }
       
+      // Client-side validation: Check for existing shifts on same date
+      const selectedEmployee = employees.find(emp => emp.id === data.userId);
+      const shiftsOnDate = shifts.filter(shift => {
+        if (shift.userId !== data.userId) return false;
+        const shiftDate = parseISO(shift.startTime);
+        return isSameDay(shiftDate, startDateTime);
+      });
+
+      if (shiftsOnDate.length > 0) {
+        const times = shiftsOnDate
+          .map(s => `${format(parseISO(s.startTime), 'HH:mm')} - ${format(parseISO(s.endTime), 'HH:mm')}`)
+          .join(', ');
+        throw new Error(`${selectedEmployee?.firstName || 'Employee'} already has ${shiftsOnDate.length} shift(s) on this date: ${times}. Only one shift per day is allowed.`);
+      }
+
+      // Check for overlapping times on the same employee
+      const overlappingShifts = shifts.filter(shift => {
+        if (shift.userId !== data.userId) return false;
+        const shiftStart = parseISO(shift.startTime);
+        const shiftEnd = parseISO(shift.endTime);
+        // Check if new shift overlaps with existing shift
+        return startDateTime < shiftEnd && endDateTime > shiftStart;
+      });
+
+      if (overlappingShifts.length > 0) {
+        const shift = overlappingShifts[0];
+        const start = format(parseISO(shift.startTime), 'MMM d, HH:mm');
+        const end = format(parseISO(shift.endTime), 'HH:mm');
+        throw new Error(`Time conflict! ${selectedEmployee?.firstName || 'Employee'} already has a shift from ${start} to ${end}.`);
+      }
+
       const response = await apiRequest("POST", "/api/shifts", {
         userId: data.userId,
         branchId: currentUser?.branchId,

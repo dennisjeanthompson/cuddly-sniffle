@@ -17,10 +17,12 @@ import {
   DialogActions,
   Button,
   CircularProgress,
+  TextField,
 } from "@mui/material";
 import {
   DragIndicator as DragIcon,
   DeleteOutline as DeleteIcon,
+  EditOutlined as EditIcon,
   InfoOutlined as InfoIcon,
 } from "@mui/icons-material";
 
@@ -64,6 +66,10 @@ export function DragDropScheduler({
   const [dragSource, setDragSource] = useState<{ day: number; hour: number } | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [shiftToDelete, setShiftToDelete] = useState<Shift | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [shiftToEdit, setShiftToEdit] = useState<Shift | null>(null);
+  const [editStartTime, setEditStartTime] = useState("00:00");
+  const [editEndTime, setEditEndTime] = useState("00:00");
 
   const weekDays = useMemo(() => {
     return Array.from({ length: 7 }, (_, i) => {
@@ -123,6 +129,43 @@ export function DragDropScheduler({
       onShiftUpdated?.();
     },
   });
+
+  const handleEditClick = (shift: Shift) => {
+    setShiftToEdit(shift);
+    const startDate = parseISO(shift.startTime);
+    const endDate = parseISO(shift.endTime);
+    setEditStartTime(`${String(startDate.getHours()).padStart(2, "0")}:${String(startDate.getMinutes()).padStart(2, "0")}`);
+    setEditEndTime(`${String(endDate.getHours()).padStart(2, "0")}:${String(endDate.getMinutes()).padStart(2, "0")}`);
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!shiftToEdit || !editStartTime || !editEndTime) return;
+
+    const startDate = parseISO(shiftToEdit.startTime);
+    const [startHour, startMin] = editStartTime.split(":").map(Number);
+    const [endHour, endMin] = editEndTime.split(":").map(Number);
+
+    const newStart = new Date(startDate);
+    newStart.setHours(startHour, startMin, 0, 0);
+
+    const newEnd = new Date(startDate);
+    newEnd.setHours(endHour, endMin, 0, 0);
+
+    // If end time is before start time, assume next day (night shift)
+    if (newEnd <= newStart) {
+      newEnd.setDate(newEnd.getDate() + 1);
+    }
+
+    updateShiftMutation.mutate({
+      shiftId: shiftToEdit.id,
+      newStartTime: newStart.toISOString(),
+      newEndTime: newEnd.toISOString(),
+    });
+
+    setEditDialogOpen(false);
+    setShiftToEdit(null);
+  };
 
   const handleDragStart = (shift: Shift, day: number) => {
     if (!isManager) return;
@@ -326,7 +369,7 @@ export function DragDropScheduler({
                               {isManager && (
                                 <DragIcon sx={{ fontSize: 14, flexShrink: 0 }} />
                               )}
-                              <Box sx={{ flex: 1, minWidth: 0 }}>
+                              <Box sx={{ flex: 1, minWidth: 0, cursor: isManager ? "pointer" : "default" }}>
                                 <Typography variant="caption" fontWeight={600} noWrap>
                                   {shift.user?.firstName} {shift.user?.lastName?.charAt(0)}.
                                 </Typography>
@@ -335,23 +378,42 @@ export function DragDropScheduler({
                                 </Typography>
                               </Box>
                               {isManager && (
-                                <Tooltip title="Delete shift">
-                                  <IconButton
-                                    size="small"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDeleteClick(shift);
-                                    }}
-                                    sx={{
-                                      color: "inherit",
-                                      opacity: 0.7,
-                                      padding: 0.25,
-                                      "&:hover": { opacity: 1 },
-                                    }}
-                                  >
-                                    <DeleteIcon sx={{ fontSize: 14 }} />
-                                  </IconButton>
-                                </Tooltip>
+                                <Stack direction="row" spacing={0.25} sx={{ flexShrink: 0 }}>
+                                  <Tooltip title="Edit shift time">
+                                    <IconButton
+                                      size="small"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleEditClick(shift);
+                                      }}
+                                      sx={{
+                                        color: "inherit",
+                                        opacity: 0.7,
+                                        padding: 0.25,
+                                        "&:hover": { opacity: 1 },
+                                      }}
+                                    >
+                                      <EditIcon sx={{ fontSize: 14 }} />
+                                    </IconButton>
+                                  </Tooltip>
+                                  <Tooltip title="Delete shift">
+                                    <IconButton
+                                      size="small"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteClick(shift);
+                                      }}
+                                      sx={{
+                                        color: "inherit",
+                                        opacity: 0.7,
+                                        padding: 0.25,
+                                        "&:hover": { opacity: 1 },
+                                      }}
+                                    >
+                                      <DeleteIcon sx={{ fontSize: 14 }} />
+                                    </IconButton>
+                                  </Tooltip>
+                                </Stack>
                               )}
                             </Box>
                           </Paper>
@@ -419,6 +481,70 @@ export function DragDropScheduler({
             startIcon={deleteShiftMutation.isPending ? <CircularProgress size={16} /> : <DeleteIcon />}
           >
             {deleteShiftMutation.isPending ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog
+        open={editDialogOpen}
+        onClose={() => {
+          setEditDialogOpen(false);
+          setShiftToEdit(null);
+        }}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Edit Shift Time</DialogTitle>
+        <DialogContent sx={{ pt: 2 }}>
+          {shiftToEdit && (
+            <Stack spacing={2}>
+              <Box>
+                <Typography variant="body2" color="textSecondary" gutterBottom>
+                  {shiftToEdit.user?.firstName} {shiftToEdit.user?.lastName}
+                </Typography>
+              </Box>
+              <TextField
+                label="Start Time"
+                type="time"
+                value={editStartTime}
+                onChange={(e) => setEditStartTime(e.target.value)}
+                fullWidth
+                InputLabelProps={{ shrink: true }}
+                inputProps={{ step: 900 }}
+              />
+              <TextField
+                label="End Time"
+                type="time"
+                value={editEndTime}
+                onChange={(e) => setEditEndTime(e.target.value)}
+                fullWidth
+                InputLabelProps={{ shrink: true }}
+                inputProps={{ step: 900 }}
+              />
+              <Typography variant="caption" color="textSecondary">
+                Note: If end time is before start time, the shift will continue to the next day.
+              </Typography>
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button
+            onClick={() => {
+              setEditDialogOpen(false);
+              setShiftToEdit(null);
+            }}
+            disabled={updateShiftMutation.isPending}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleSaveEdit}
+            disabled={updateShiftMutation.isPending || !editStartTime || !editEndTime}
+            startIcon={updateShiftMutation.isPending ? <CircularProgress size={16} /> : <EditIcon />}
+          >
+            {updateShiftMutation.isPending ? "Saving..." : "Save"}
           </Button>
         </DialogActions>
       </Dialog>

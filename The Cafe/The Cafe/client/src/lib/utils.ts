@@ -45,10 +45,6 @@ export function formatCurrency(amount: string | number | null): string {
   }).format(numAmount);
 }
 
-export function getInitials(firstName: string, lastName: string): string {
-  return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
-}
-
 export function getStatusColor(status: string): string {
   switch (status.toLowerCase()) {
     case "working":

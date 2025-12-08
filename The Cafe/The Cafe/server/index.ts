@@ -144,7 +144,7 @@ app.use((req, res, next) => {
       }
     }
   } else {
-    console.log('🚀 Production mode: Using SQLite database');
+    console.log('🚀 Production mode: Using PostgreSQL (Neon) database');
   }
 
   // Initialize database (creates tables if they don't exist)

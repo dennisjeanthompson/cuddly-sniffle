@@ -491,9 +491,19 @@ export class DatabaseStorage implements IStorage {
     const result = await db.select().from(notifications).where(eq(notifications.id, id)).limit(1);
     if (!result[0]) return undefined;
     
+    let parsedData = null;
+    if (result[0].data) {
+      try {
+        parsedData = typeof result[0].data === 'string' ? JSON.parse(result[0].data) : result[0].data;
+      } catch (e) {
+        console.error('Error parsing notification data:', e, 'Data:', result[0].data);
+        parsedData = result[0].data;
+      }
+    }
+    
     return {
       ...result[0],
-      data: result[0].data ? JSON.parse(result[0].data) : null,
+      data: parsedData,
       createdAt: result[0].createdAt instanceof Date ? result[0].createdAt : (result[0].createdAt ? new Date(result[0].createdAt) : new Date()),
     } as Notification;
   }
@@ -512,11 +522,22 @@ export class DatabaseStorage implements IStorage {
     const result = await db.select().from(notifications)
       .where(eq(notifications.userId, userId))
       .orderBy(desc(notifications.createdAt));
-    return result.map(n => ({
-      ...n,
-      data: n.data ? JSON.parse(n.data) : null,
-      createdAt: n.createdAt instanceof Date ? n.createdAt : (n.createdAt ? new Date(n.createdAt) : new Date()),
-    })) as Notification[];
+    return result.map(n => {
+      let parsedData = null;
+      if (n.data) {
+        try {
+          parsedData = typeof n.data === 'string' ? JSON.parse(n.data) : n.data;
+        } catch (e) {
+          console.error('Error parsing notification data:', e, 'Data:', n.data);
+          parsedData = n.data;
+        }
+      }
+      return {
+        ...n,
+        data: parsedData,
+        createdAt: n.createdAt instanceof Date ? n.createdAt : (n.createdAt ? new Date(n.createdAt) : new Date()),
+      } as Notification;
+    });
   }
 
   async markAllNotificationsAsRead(userId: string): Promise<void> {

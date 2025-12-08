@@ -734,21 +734,32 @@ export default function MuiNotifications() {
               </Typography>
 
               {/* Additional Data Section */}
-              {selectedNotification.data && Object.keys(selectedNotification.data).length > 0 && (
-                <Box sx={{ mt: 3 }}>
-                  <Typography variant="subtitle2" fontWeight={600} gutterBottom color="text.secondary">
-                    Additional Details
-                  </Typography>
-                  <Paper 
-                    variant="outlined" 
-                    sx={{ 
-                      p: 2, 
-                      borderRadius: 2, 
-                      bgcolor: alpha(theme.palette.background.default, 0.5) 
-                    }}
-                  >
-                    <Stack spacing={1.5}>
-                      {Object.entries(selectedNotification.data).map(([key, value]) => {
+              {selectedNotification.data && (() => {
+                // Safely parse data if it's a string
+                let parsedData = selectedNotification.data;
+                if (typeof parsedData === 'string') {
+                  try {
+                    parsedData = JSON.parse(parsedData);
+                  } catch (e) {
+                    parsedData = null;
+                  }
+                }
+                
+                return parsedData && Object.keys(parsedData).length > 0 && (
+                  <Box sx={{ mt: 3 }}>
+                    <Typography variant="subtitle2" fontWeight={600} gutterBottom color="text.secondary">
+                      Additional Details
+                    </Typography>
+                    <Paper 
+                      variant="outlined" 
+                      sx={{ 
+                        p: 2, 
+                        borderRadius: 2, 
+                        bgcolor: alpha(theme.palette.background.default, 0.5) 
+                      }}
+                    >
+                      <Stack spacing={1.5}>
+                        {Object.entries(parsedData).map(([key, value]) => {
                         const isObject = typeof value === 'object' && value !== null;
                         if (isObject) {
                           return (
@@ -789,10 +800,11 @@ export default function MuiNotifications() {
                           </Stack>
                         );
                       })}
-                    </Stack>
-                  </Paper>
-                </Box>
-              )}
+                      </Stack>
+                    </Paper>
+                  </Box>
+                );
+              })()}
 
               {/* Status Section */}
               <Box sx={{ mt: 3 }}>

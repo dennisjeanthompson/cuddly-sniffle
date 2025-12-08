@@ -429,7 +429,7 @@ export default function MobileTimeOff() {
                               <h4 className="font-bold text-lg">{typeConfig.label}</h4>
                               <Badge variant={statusConfig.variant} className="flex items-center gap-1 px-3 py-1">
                                 <StatusIcon className="h-3.5 w-3.5" />
-                                {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                                {(request.status ? request.status.charAt(0).toUpperCase() + request.status.slice(1) : "Unknown")}
                               </Badge>
                             </div>
                             <div className="flex items-center gap-2 text-base text-muted-foreground mb-2">

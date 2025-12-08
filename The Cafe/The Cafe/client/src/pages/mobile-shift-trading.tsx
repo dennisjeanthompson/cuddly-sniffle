@@ -208,12 +208,12 @@ export default function MobileShiftTrading() {
                     {type === 'my' ? (
                       <Badge variant={statusConfig.variant} className="flex items-center gap-1 px-3 py-1">
                         <StatusIcon className="h-3.5 w-3.5" />
-                        {trade.status.charAt(0).toUpperCase() + trade.status.slice(1)}
+                        {(trade.status ? trade.status.charAt(0).toUpperCase() + trade.status.slice(1) : "Unknown")}
                       </Badge>
                     ) : (
                       <Badge variant={urgencyConfig.variant} className="flex items-center gap-1 px-3 py-1">
                         <UrgencyIcon className="h-3.5 w-3.5" />
-                        {trade.urgency.charAt(0).toUpperCase() + trade.urgency.slice(1)}
+                        {(trade.urgency ? trade.urgency.charAt(0).toUpperCase() + trade.urgency.slice(1) : "Unknown")}
                       </Badge>
                     )}
                   </div>

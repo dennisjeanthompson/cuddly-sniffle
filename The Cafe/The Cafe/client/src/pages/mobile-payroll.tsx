@@ -489,7 +489,7 @@ export default function MobilePayroll() {
                       }
                       className="text-base px-4 py-1"
                     >
-                      {entry.status.charAt(0).toUpperCase() + entry.status.slice(1)}
+                      {(entry.status ? entry.status.charAt(0).toUpperCase() + entry.status.slice(1) : "Unknown")}
                     </Badge>
                   </div>
 

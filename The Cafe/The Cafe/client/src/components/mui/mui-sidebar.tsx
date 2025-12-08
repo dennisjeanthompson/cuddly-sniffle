@@ -377,7 +377,7 @@ export default function MuiSidebar() {
                   {currentUser?.firstName} {currentUser?.lastName}
                 </Typography>
                 <Chip
-                  label={currentUser?.role?.charAt(0).toUpperCase() + currentUser?.role?.slice(1) || "Employee"}
+                  label={(currentUser?.role ? currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1) : "Employee")}
                   size="small"
                   color={getRoleColor(currentUser?.role || "employee") as any}
                   sx={{

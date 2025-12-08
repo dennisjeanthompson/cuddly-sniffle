@@ -490,7 +490,7 @@ export default function MuiTimeOff() {
                         <TableCell align="center">
                           <Chip
                             icon={getStatusIcon(request.status)}
-                            label={request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                            label={(request.status ? request.status.charAt(0).toUpperCase() + request.status.slice(1) : "Unknown")}
                             color={getStatusColor(request.status)}
                             variant="outlined"
                             size="small"

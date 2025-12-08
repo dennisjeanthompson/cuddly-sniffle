@@ -32,37 +32,27 @@ const requireRole = (roles: string[]) => (req: Request, res: Response, next: Nex
   next();
 };
 
-// Get all employees (for managers)
-router.get('/api/employees', requireAuth, requireRole(['manager']), async (req, res) => {
+// Get all employees in the same branch (accessible to all authenticated users for shift trading)
+router.get('/api/employees', requireAuth, async (req, res) => {
   try {
     const branchId = req.session.user?.branchId;
     
-    // If it's a branch manager, only return employees from their branch
+    // Return employees from the same branch (for shift trading purposes)
     const employees = await storage.getUsersByBranch(branchId);
     
-    // Filter out sensitive data
-    const sanitizedEmployees = employees.map(emp => ({
-      id: emp.id,
-      username: emp.username,
-      firstName: emp.firstName,
-      lastName: emp.lastName,
-      email: emp.email,
-      role: emp.role,
-      position: emp.position,
-      hourlyRate: emp.hourlyRate,
-      branchId: emp.branchId,
-      isActive: emp.isActive,
-      blockchainVerified: emp.blockchainVerified,
-      blockchainHash: emp.blockchainHash,
-      verifiedAt: emp.verifiedAt,
-      sssLoanDeduction: emp.sssLoanDeduction || '0',
-      pagibigLoanDeduction: emp.pagibigLoanDeduction || '0',
-      cashAdvanceDeduction: emp.cashAdvanceDeduction || '0',
-      otherDeductions: emp.otherDeductions || '0',
-      createdAt: emp.createdAt,
-    }));
+    // Filter out sensitive data - return only basic info needed for shift trading
+    const sanitizedEmployees = employees
+      .filter(emp => emp.isActive) // Only return active employees
+      .map(emp => ({
+        id: emp.id,
+        firstName: emp.firstName,
+        lastName: emp.lastName,
+        email: emp.email,
+        position: emp.position,
+        branchId: emp.branchId,
+      }));
     
-    res.json(sanitizedEmployees);
+    res.json({ employees: sanitizedEmployees });
   } catch (error) {
     console.error('Error fetching employees:', error);
     res.status(500).json({ message: 'Failed to fetch employees' });

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { isManager, getCurrentUser } from "@/lib/auth";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, isFuture } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { getInitials } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -181,6 +181,17 @@ export default function MuiShiftTrading() {
   const myRequests = trades.filter((t) => t.requesterId === currentUser?.id);
   const incomingRequests = trades.filter((t) => t.targetUserId === currentUser?.id);
   const pendingApprovals = trades.filter((t) => t.status === "pending" && isManagerRole);
+
+  // **FIXED**: Filter to ONLY show future shifts
+  const futureShifts = myShifts.filter((shift: any) => {
+    try {
+      if (!shift.startTime) return false;
+      const shiftDate = parseISO(shift.startTime);
+      return isFuture(shiftDate);
+    } catch {
+      return false;
+    }
+  });
 
   // Create trade mutation
   const createTrade = useMutation({
@@ -433,6 +444,22 @@ export default function MuiShiftTrading() {
 
         {isLoading && <LinearProgress sx={{ mb: 3, borderRadius: 1 }} />}
 
+        {/* Workflow Info Alert */}
+        <Alert severity="info" sx={{ mb: 4 }}>
+          <AlertTitle>How Shift Trading Works</AlertTitle>
+          <Stack spacing={1} sx={{ fontSize: "0.875rem" }}>
+            <Typography variant="caption" display="block">
+              <strong>1. Request:</strong> Select one of your <strong>upcoming shifts</strong> and choose a colleague to trade with
+            </Typography>
+            <Typography variant="caption" display="block">
+              <strong>2. Accept/Decline:</strong> Your colleague reviews and accepts or declines your request
+            </Typography>
+            <Typography variant="caption" display="block">
+              <strong>3. Manager Approval:</strong> A manager reviews the accepted trade to ensure coverage
+            </Typography>
+          </Stack>
+        </Alert>
+
         {/* Summary Cards */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
@@ -628,6 +655,9 @@ export default function MuiShiftTrading() {
           maxWidth="sm"
           fullWidth
           PaperProps={{ sx: { borderRadius: 3 } }}
+          slotProps={{
+            backdrop: { sx: { backdropFilter: "blur(4px)" } }
+          }}
         >
           <DialogTitle>
             <Stack direction="row" alignItems="center" spacing={1}>
@@ -637,28 +667,44 @@ export default function MuiShiftTrading() {
           </DialogTitle>
           <DialogContent>
             <Stack spacing={3} sx={{ mt: 2 }}>
-              <FormControl fullWidth>
+              {futureShifts.length === 0 && (
+                <Alert severity="info">
+                  No upcoming shifts available for trading. Check back later for future schedule updates.
+                </Alert>
+              )}
+
+              <FormControl fullWidth disabled={futureShifts.length === 0}>
                 <InputLabel>Select Shift</InputLabel>
                 <Select
                   value={formData.shiftId}
                   label="Select Shift"
                   onChange={(e) => setFormData({ ...formData, shiftId: e.target.value })}
                 >
-                  {myShifts.map((shift: any) => (
-                    <MenuItem key={shift.id} value={shift.id}>
-                      {shift.date && shift.startTime && shift.endTime 
-                        ? `${format(parseISO(shift.date), "MMM d")} - ${format(parseISO(shift.startTime), "h:mm a")} to ${format(parseISO(shift.endTime), "h:mm a")}`
-                        : 'Invalid shift data'}
-                    </MenuItem>
-                  ))}
+                  {futureShifts.map((shift: any) => {
+                    try {
+                      const startDate = shift.startTime ? parseISO(shift.startTime) : null;
+                      const startTime = shift.startTime ? parseISO(shift.startTime) : null;
+                      const endTime = shift.endTime ? parseISO(shift.endTime) : null;
+                      
+                      if (!startDate || !startTime || !endTime) return null;
+                      
+                      return (
+                        <MenuItem key={shift.id} value={shift.id}>
+                          {format(startDate, "EEE, MMM d, yyyy")} - {format(startTime, "h:mm a")} to {format(endTime, "h:mm a")}
+                        </MenuItem>
+                      );
+                    } catch {
+                      return null;
+                    }
+                  })}
                 </Select>
               </FormControl>
 
               <FormControl fullWidth>
-                <InputLabel>Trade With</InputLabel>
+                <InputLabel>Trade With (Colleague)</InputLabel>
                 <Select
                   value={formData.targetUserId}
-                  label="Trade With"
+                  label="Trade With (Colleague)"
                   onChange={(e) => setFormData({ ...formData, targetUserId: e.target.value })}
                 >
                   {employees
@@ -678,9 +724,9 @@ export default function MuiShiftTrading() {
                   label="Urgency Level"
                   onChange={(e) => setFormData({ ...formData, urgency: e.target.value as "low" | "normal" | "urgent" })}
                 >
-                  <MenuItem value="low">Low</MenuItem>
-                  <MenuItem value="normal">Normal</MenuItem>
-                  <MenuItem value="urgent">Urgent</MenuItem>
+                  <MenuItem value="low">Low - Flexible timeline</MenuItem>
+                  <MenuItem value="normal">Normal - Standard request</MenuItem>
+                  <MenuItem value="urgent">Urgent - Time sensitive</MenuItem>
                 </Select>
               </FormControl>
 
@@ -691,7 +737,8 @@ export default function MuiShiftTrading() {
                 fullWidth
                 value={formData.reason}
                 onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
-                placeholder="Why are you requesting this shift trade?"
+                placeholder="Explain why you need to trade this shift (helps manager decide)..."
+                helperText="Provide context for your trade request"
               />
             </Stack>
           </DialogContent>
@@ -699,10 +746,11 @@ export default function MuiShiftTrading() {
             <Button onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
             <Button
               variant="contained"
+              startIcon={<SendIcon />}
               onClick={() => createTrade.mutate(formData)}
-              disabled={!formData.shiftId || !formData.targetUserId || !formData.reason || createTrade.isPending}
+              disabled={!formData.shiftId || !formData.targetUserId || !formData.reason || createTrade.isPending || futureShifts.length === 0}
             >
-              {createTrade.isPending ? "Sending..." : "Send Request"}
+              {createTrade.isPending ? "Sending..." : "Send Trade Request"}
             </Button>
           </DialogActions>
         </Dialog>

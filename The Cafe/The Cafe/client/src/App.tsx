@@ -116,43 +116,6 @@ function RouteLoader({ children }: { children: React.ReactNode }) {
   );
 }
 
-// Loading Screen Component (MUI)
-function LoadingScreen() {
-  return (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        bgcolor: "background.default",
-      }}
-    >
-      <Box sx={{ textAlign: "center" }}>
-        <Box
-          sx={{
-            width: 64,
-            height: 64,
-            borderRadius: 3,
-            background: (theme) =>
-              `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            mx: "auto",
-            mb: 2,
-            boxShadow: (theme) => `0 8px 24px ${alpha(theme.palette.primary.main, 0.3)}`,
-          }}
-        >
-          <CoffeeIcon sx={{ fontSize: 32, color: "white" }} />
-        </Box>
-        <CircularProgress size={24} sx={{ mb: 2 }} />
-        <Typography color="text.secondary">Loading...</Typography>
-      </Box>
-    </Box>
-  );
-}
-
 // Desktop Layout with MUI Components
 function DesktopLayout({ children }: { children: React.ReactNode }) {
   return (

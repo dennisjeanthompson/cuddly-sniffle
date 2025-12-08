@@ -154,7 +154,7 @@ const availableTrades = (availableData?.trades || [])
 | `NODE_ENV` | development | production | Build mode |
 | `PORT` | 5000/5001 | 3000+ | Server port |
 | `MOBILE_SERVER` | true/false | not set | Force mobile/desktop UI |
-| `DATABASE_URL` | empty (SQLite) | required | PostgreSQL connection |
+| `DATABASE_URL` | required | required | PostgreSQL (Neon) connection |
 
 ---
 

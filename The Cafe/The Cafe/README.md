@@ -69,11 +69,11 @@ This starts two servers:
 
 ## 🗄️ Database
 
-The app uses SQLite for local development. The database is automatically created and seeded with sample data on first run.
+The app uses PostgreSQL (Neon) for both development and production. The database is automatically initialized with all required tables and seeded with sample data on first run.
 
-To reset the database:
+Set the `DATABASE_URL` environment variable to connect to your PostgreSQL database:
 ```bash
-rm sqlite.db
+export DATABASE_URL="postgresql://user:password@host/database"
 npm run dev
 ```
 
@@ -98,7 +98,7 @@ The Cafe/
 
 - **Frontend**: React, TypeScript, Vite, Material-UI, TailwindCSS
 - **Backend**: Express.js, Node.js
-- **Database**: SQLite (Drizzle ORM)
+- **Database**: PostgreSQL with Neon (Drizzle ORM)
 - **State**: TanStack Query
 
 ## 📄 License

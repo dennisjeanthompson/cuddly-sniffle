@@ -109,7 +109,7 @@ app.use((req, res, next) => {
 (async () => {
   let loadSample = false;
 
-  // Skip SQLite-specific logic in production (Render)
+  // Skip development-specific logic in production (Render)
   const isProduction = process.env.NODE_ENV === 'production';
 
   if (!isProduction) {

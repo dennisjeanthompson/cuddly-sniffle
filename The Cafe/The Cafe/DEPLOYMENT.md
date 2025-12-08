@@ -112,13 +112,13 @@ PORT=3001 NODE_ENV=production MOBILE_SERVER=true node dist/index.js
 ## Environment Variables
 
 ### Required
-- `DATABASE_URL`: PostgreSQL connection string (Neon)
+- `DATABASE_URL`: PostgreSQL (Neon) connection string
   - Format: `postgresql://user:password@host.region.aws.neon.tech/dbname`
-  - Leave empty for SQLite (development only)
+  - Required for both development and production
 
 ### Optional
 - `NODE_ENV`: `development` or `production` (default: development)
-- `PORT`: Server port (default: 5000)
+- `PORT`: Server port (default: 3000)
 - `MOBILE_SERVER`: Set to `true` for employee-only server, `false` for manager/admin
 - `FRESH_DB`: Set to `true` to reset database on startup
 

@@ -1,8 +1,8 @@
-// PostgreSQL version - these functions are stubs since we don't need SQLite file management
+// PostgreSQL (Neon) management functions - stubs for development mode compatibility
 
 export async function promptDatabaseChoice(): Promise<'fresh' | 'continue' | 'sample'> {
   // In PostgreSQL mode, always continue with existing database
-  console.log('ℹ️  Using PostgreSQL database');
+  console.log('ℹ️  Using PostgreSQL (Neon) database');
   return 'continue';
 }
 

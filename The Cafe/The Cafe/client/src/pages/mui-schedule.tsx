@@ -57,6 +57,8 @@ import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import WbSunnyIcon from "@mui/icons-material/WbSunny";
 import WbTwilightIcon from "@mui/icons-material/WbTwilight";
 import NightsStayIcon from "@mui/icons-material/NightsStay";
+import DeleteIcon from "@mui/icons-material/Delete";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
 import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 
@@ -276,6 +278,40 @@ export default function MuiSchedule() {
       setCreateError(error.message);
     },
   });
+
+  // Delete shift state and mutation
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [shiftToDelete, setShiftToDelete] = useState<Shift | null>(null);
+
+  const deleteShiftMutation = useMutation({
+    mutationFn: async (shiftId: string) => {
+      const response = await apiRequest("DELETE", `/api/shifts/${shiftId}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to delete shift");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["shifts"] });
+      setDeleteDialogOpen(false);
+      setShiftToDelete(null);
+    },
+    onError: (error: Error) => {
+      console.error("Delete shift error:", error);
+    },
+  });
+
+  const handleDeleteShift = (shift: Shift) => {
+    setShiftToDelete(shift);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteShift = () => {
+    if (shiftToDelete) {
+      deleteShiftMutation.mutate(shiftToDelete.id);
+    }
+  };
 
   // Helper to get shifts for a specific day
   const getShiftsForDay = (day: Date): Shift[] => {
@@ -633,46 +669,69 @@ export default function MuiSchedule() {
                             }
                           }}
                         >
-                          <Stack direction="row" alignItems="center" spacing={1.5}>
-                            <Avatar
-                              sx={{
-                                width: 32,
-                                height: 32,
-                                bgcolor: "primary.main",
-                                fontSize: "0.8rem",
-                                fontWeight: 600,
-                              }}
-                            >
-                              {shift.user?.firstName?.[0] || "?"}
-                            </Avatar>
-                            <Box sx={{ flex: 1, minWidth: 0 }}>
-                              <Typography
-                                variant="body2"
-                                fontWeight={600}
-                                noWrap
-                                sx={{ mb: 0.25 }}
+                          <Stack direction="row" alignItems="flex-start" spacing={1}>
+                            <Stack direction="row" alignItems="center" spacing={1.5} sx={{ flex: 1 }}>
+                              <Avatar
+                                sx={{
+                                  width: 32,
+                                  height: 32,
+                                  bgcolor: "primary.main",
+                                  fontSize: "0.8rem",
+                                  fontWeight: 600,
+                                  flexShrink: 0,
+                                }}
                               >
-                                {shift.user?.firstName || "Staff"}{" "}
-                                {shift.user?.lastName?.[0] || ""}.
-                              </Typography>
-                              <Stack
-                                direction="row"
-                                alignItems="center"
-                                spacing={0.5}
-                              >
-                                <AccessTimeIcon
-                                  sx={{ fontSize: 13, color: "text.secondary" }}
-                                />
+                                {shift.user?.firstName?.[0] || "?"}
+                              </Avatar>
+                              <Box sx={{ flex: 1, minWidth: 0 }}>
                                 <Typography
-                                  variant="caption"
-                                  color="text.secondary"
-                                  fontWeight={500}
+                                  variant="body2"
+                                  fontWeight={600}
+                                  noWrap
+                                  sx={{ mb: 0.25 }}
                                 >
-                                  {format(parseISO(shift.startTime), "h:mm a")} -{" "}
-                                  {format(parseISO(shift.endTime), "h:mm a")}
+                                  {shift.user?.firstName || "Staff"}{" "}
+                                  {shift.user?.lastName?.[0] || ""}.
                                 </Typography>
-                              </Stack>
-                            </Box>
+                                <Stack
+                                  direction="row"
+                                  alignItems="center"
+                                  spacing={0.5}
+                                >
+                                  <AccessTimeIcon
+                                    sx={{ fontSize: 13, color: "text.secondary" }}
+                                  />
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                    fontWeight={500}
+                                  >
+                                    {format(parseISO(shift.startTime), "h:mm a")} -{" "}
+                                    {format(parseISO(shift.endTime), "h:mm a")}
+                                  </Typography>
+                                </Stack>
+                              </Box>
+                            </Stack>
+                            {isManagerRole && (
+                              <IconButton
+                                size="small"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteShift(shift);
+                                }}
+                                sx={{
+                                  color: "error.main",
+                                  opacity: 0.6,
+                                  '&:hover': {
+                                    opacity: 1,
+                                    bgcolor: "rgba(211, 47, 47, 0.08)",
+                                  },
+                                  flexShrink: 0,
+                                }}
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            )}
                           </Stack>
                         </Paper>
                       ))
@@ -921,6 +980,80 @@ export default function MuiSchedule() {
             startIcon={createShiftMutation.isPending ? <CircularProgress size={16} color="inherit" /> : <AddIcon />}
           >
             {createShiftMutation.isPending ? "Creating..." : "Create Shift"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Shift Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          sx: { borderRadius: 3 }
+        }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <DeleteIcon color="error" />
+            <Typography variant="h6" fontWeight="bold">Delete Shift?</Typography>
+          </Stack>
+        </DialogTitle>
+        <DialogContent>
+          {shiftToDelete && (
+            <Box>
+              <Typography variant="body2" color="text.secondary" paragraph>
+                Are you sure you want to delete this shift? This action cannot be undone.
+              </Typography>
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: 2,
+                  borderRadius: 2,
+                  bgcolor: "rgba(211, 47, 47, 0.04)",
+                  borderColor: "rgba(211, 47, 47, 0.2)",
+                }}
+              >
+                <Stack spacing={1}>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">
+                      Employee
+                    </Typography>
+                    <Typography variant="subtitle2" fontWeight={600}>
+                      {shiftToDelete.user?.firstName} {shiftToDelete.user?.lastName}
+                    </Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">
+                      Time
+                    </Typography>
+                    <Typography variant="subtitle2" fontWeight={600}>
+                      {format(parseISO(shiftToDelete.startTime), "MMM d, h:mm a")} - {format(parseISO(shiftToDelete.endTime), "h:mm a")}
+                    </Typography>
+                  </Box>
+                </Stack>
+              </Paper>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5 }}>
+          <Button
+            onClick={() => setDeleteDialogOpen(false)}
+            sx={{ borderRadius: 2 }}
+            disabled={deleteShiftMutation.isPending}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={confirmDeleteShift}
+            disabled={deleteShiftMutation.isPending}
+            startIcon={deleteShiftMutation.isPending ? <CircularProgress size={16} color="inherit" /> : <DeleteIcon />}
+            sx={{ borderRadius: 2 }}
+          >
+            {deleteShiftMutation.isPending ? "Deleting..." : "Delete Shift"}
           </Button>
         </DialogActions>
       </Dialog>

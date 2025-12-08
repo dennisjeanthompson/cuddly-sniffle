@@ -460,6 +460,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       date: shift.startTime ? new Date(shift.startTime).toISOString().split('T')[0] : null,
     }));
 
+    // Log what we're sending back for debugging
+    console.log('Returning shifts with data:', enrichedShifts.slice(0, 2).map(s => ({ startTime: s.startTime, date: s.date })));
+    
     res.json({ shifts: enrichedShifts });
   });
 

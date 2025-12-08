@@ -182,16 +182,34 @@ export default function MuiShiftTrading() {
   const incomingRequests = trades.filter((t) => t.targetUserId === currentUser?.id);
   const pendingApprovals = trades.filter((t) => t.status === "pending" && isManagerRole);
 
-  // **FIXED**: Filter to ONLY show future shifts
+  // **FIXED**: Filter to ONLY show future shifts with proper date handling
   const futureShifts = myShifts.filter((shift: any) => {
     try {
-      if (!shift.startTime) return false;
-      const shiftDate = parseISO(shift.startTime);
-      return isFuture(shiftDate);
-    } catch {
+      // Check both startTime and date fields
+      const dateToCheck = shift.startTime || shift.date;
+      if (!dateToCheck) {
+        console.warn('Shift missing both startTime and date:', shift);
+        return false;
+      }
+      
+      const shiftDate = parseISO(String(dateToCheck));
+      
+      // Check if date is valid
+      if (isNaN(shiftDate.getTime())) {
+        console.warn('Invalid shift date:', dateToCheck);
+        return false;
+      }
+      
+      const isFutureShift = isFuture(shiftDate);
+      console.log('Shift check:', dateToCheck, '→ Future?', isFutureShift);
+      return isFutureShift;
+    } catch (error) {
+      console.error('Error parsing shift date:', error);
       return false;
     }
   });
+  
+  console.log('Total shifts:', myShifts.length, '| Future shifts:', futureShifts.length);
 
   // Create trade mutation
   const createTrade = useMutation({
@@ -680,23 +698,28 @@ export default function MuiShiftTrading() {
                   label="Select Shift"
                   onChange={(e) => setFormData({ ...formData, shiftId: e.target.value })}
                 >
-                  {futureShifts.map((shift: any) => {
-                    try {
-                      const startDate = shift.startTime ? parseISO(shift.startTime) : null;
-                      const startTime = shift.startTime ? parseISO(shift.startTime) : null;
-                      const endTime = shift.endTime ? parseISO(shift.endTime) : null;
-                      
-                      if (!startDate || !startTime || !endTime) return null;
-                      
-                      return (
-                        <MenuItem key={shift.id} value={shift.id}>
-                          {format(startDate, "EEE, MMM d, yyyy")} - {format(startTime, "h:mm a")} to {format(endTime, "h:mm a")}
-                        </MenuItem>
-                      );
-                    } catch {
-                      return null;
-                    }
-                  })}
+                  {futureShifts.length > 0 ? (
+                    futureShifts.map((shift: any) => {
+                      try {
+                        const startDate = shift.startTime ? parseISO(shift.startTime) : null;
+                        const startTime = shift.startTime ? parseISO(shift.startTime) : null;
+                        const endTime = shift.endTime ? parseISO(shift.endTime) : null;
+                        
+                        if (!startDate || !startTime || !endTime) return null;
+                        
+                        return (
+                          <MenuItem key={shift.id} value={shift.id}>
+                            {format(startDate, "EEE, MMM d, yyyy")} - {format(startTime, "h:mm a")} to {format(endTime, "h:mm a")}
+                          </MenuItem>
+                        );
+                      } catch (error) {
+                        console.error('Error rendering shift option:', error);
+                        return null;
+                      }
+                    })
+                  ) : (
+                    <MenuItem disabled>No future shifts available</MenuItem>
+                  )}
                 </Select>
               </FormControl>
 
@@ -708,7 +731,7 @@ export default function MuiShiftTrading() {
                   onChange={(e) => setFormData({ ...formData, targetUserId: e.target.value })}
                 >
                   {employees
-                    .filter((emp: any) => emp.id !== currentUser?.id)
+                    .filter((emp: any) => emp.id !== currentUser?.id && emp.role === 'employee')
                     .map((emp: any) => (
                       <MenuItem key={emp.id} value={emp.id}>
                         {emp.firstName} {emp.lastName}

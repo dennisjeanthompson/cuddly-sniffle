@@ -50,6 +50,7 @@ router.get('/api/employees', requireAuth, async (req, res) => {
         email: emp.email,
         position: emp.position,
         branchId: emp.branchId,
+        role: emp.role, // Include role so frontend can filter out managers/admins
       }));
     
     res.json({ employees: sanitizedEmployees });

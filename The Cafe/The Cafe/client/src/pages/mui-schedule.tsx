@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { isManager, getCurrentUser } from "@/lib/auth";
 import { getInitials } from "@/lib/utils";
+import { useRealtime } from "@/hooks/use-realtime";
 import {
   format,
   addDays,
@@ -155,13 +156,13 @@ export default function MuiSchedule() {
       return response.json();
     },
     enabled: isManagerRole,
-    refetchInterval: 10000, // Poll every 10 seconds
+    refetchInterval: 5000, // Poll every 5 seconds for real-time updates
     refetchOnWindowFocus: true,
     refetchIntervalInBackground: true,
   });
 
-  // API returns direct array, not {employees: []}
-  const employees: Employee[] = Array.isArray(employeesData) ? employeesData : [];
+  // API returns {employees: []} structure
+  const employees: Employee[] = employeesData?.employees || [];
 
   // Fetch shifts
   const {
@@ -239,6 +240,22 @@ export default function MuiSchedule() {
       const shiftDate = parseISO(shift.startTime);
       return isSameDay(shiftDate, day);
     });
+  };
+
+  // Enable real-time updates
+  useRealtime({
+    enabled: isManagerRole,
+    queryKeys: ["employees", "shifts"],
+  });
+
+  // Handle employee selection
+  const handleEmployeeSelect = (employeeId: string) => {
+    const selectedEmployee = employees.find(emp => emp.id === employeeId);
+    setFormData(prev => ({
+      ...prev,
+      userId: employeeId,
+      position: selectedEmployee?.position || "",
+    }));
   };
 
   // Navigation handlers

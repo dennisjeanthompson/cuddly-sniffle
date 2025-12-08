@@ -322,7 +322,7 @@ export function DragDropScheduler({
                     onDragOver={handleDragOver}
                     onDrop={() => handleDrop(dayIdx, hour)}
                     sx={{
-                      minHeight: "100px",
+                      height: "120px",
                       borderRight: dayIdx < 6 ? "1px solid" : "none",
                       borderBottom: "1px solid",
                       borderColor: "divider",
@@ -333,6 +333,7 @@ export function DragDropScheduler({
                         bgcolor: isToday ? "rgba(46, 125, 50, 0.04)" : "grey.50",
                       },
                       cursor: isManager ? "drop" : "default",
+                      position: "relative",
                     }}
                   >
                     <Stack spacing={0.5}>

@@ -107,6 +107,7 @@ export default function MuiSchedule() {
   };
 
   const [selectedTimePreset, setSelectedTimePreset] = useState<string | null>("morning");
+  const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set([format(new Date(), "yyyy-MM-dd")]));
   const [formData, setFormData] = useState({
     userId: "",
     position: "",
@@ -361,9 +362,30 @@ export default function MuiSchedule() {
 
   // Handle form submission
   const handleCreateShift = () => {
-    if (!formData.userId || !formData.date) return;
+    if (!formData.userId || selectedDates.size === 0) return;
     setCreateError(null);
-    createShiftMutation.mutate(formData);
+    
+    // Create shift for each selected date
+    Array.from(selectedDates).forEach(dateStr => {
+      createShiftMutation.mutate({
+        ...formData,
+        date: dateStr,
+      });
+    });
+    
+    // Reset after creation
+    setTimeout(() => {
+      setCreateDialogOpen(false);
+      setSelectedDates(new Set([format(new Date(), "yyyy-MM-dd")]));
+      setFormData({
+        userId: "",
+        position: "",
+        date: format(new Date(), "yyyy-MM-dd"),
+        startTime: "06:00",
+        endTime: "14:00",
+        notes: "",
+      });
+    }, 500);
   };
 
   return (
@@ -833,11 +855,18 @@ export default function MuiSchedule() {
               </Select>
             </FormControl>
 
-            {/* Date Selection - Week Grid */}
+            {/* Date Selection - Multi-select Week Grid */}
             <Box>
-              <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.5 }}>
-                Select Date
-              </Typography>
+              <Box sx={{ mb: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Select Dates (Click to toggle)
+                </Typography>
+                {selectedDates.size > 0 && (
+                  <Typography variant="caption" color="primary.main" fontWeight={600}>
+                    {selectedDates.size} day{selectedDates.size > 1 ? 's' : ''} selected
+                  </Typography>
+                )}
+              </Box>
               <Stack 
                 direction="row" 
                 spacing={1} 
@@ -850,11 +879,20 @@ export default function MuiSchedule() {
                   const date = addDays(startOfWeek(new Date(), { weekStartsOn: 1 }), i);
                   const dateStr = format(date, "yyyy-MM-dd");
                   const dayName = format(date, "EEE");
-                  const isSelected = formData.date === dateStr;
+                  const isSelected = selectedDates.has(dateStr);
                   return (
                     <Button
                       key={dateStr}
-                      onClick={() => setFormData({ ...formData, date: dateStr })}
+                      onClick={() => {
+                        const newSet = new Set(selectedDates);
+                        if (newSet.has(dateStr)) {
+                          newSet.delete(dateStr);
+                        } else {
+                          newSet.add(dateStr);
+                        }
+                        setSelectedDates(newSet);
+                        setFormData({ ...formData, date: dateStr });
+                      }}
                       variant={isSelected ? "contained" : "outlined"}
                       sx={{
                         flex: 1,
@@ -868,9 +906,11 @@ export default function MuiSchedule() {
                         borderColor: isSelected ? 'primary.main' : 'divider',
                         bgcolor: isSelected ? 'primary.main' : 'transparent',
                         color: isSelected ? 'white' : 'text.primary',
+                        transition: 'all 0.2s ease',
                         '&:hover': {
                           bgcolor: isSelected ? 'primary.dark' : 'action.hover',
                           borderColor: 'primary.main',
+                          transform: 'translateY(-2px)',
                         },
                       }}
                     >
@@ -994,11 +1034,11 @@ export default function MuiSchedule() {
           <Button
             variant="contained"
             onClick={handleCreateShift}
-            disabled={!formData.userId || !formData.date || createShiftMutation.isPending}
+            disabled={!formData.userId || selectedDates.size === 0 || createShiftMutation.isPending}
             sx={{ borderRadius: 2, px: 3 }}
             startIcon={createShiftMutation.isPending ? <CircularProgress size={16} color="inherit" /> : <AddIcon />}
           >
-            {createShiftMutation.isPending ? "Creating..." : "Create Shift"}
+            {createShiftMutation.isPending ? "Creating..." : `Create ${selectedDates.size > 1 ? selectedDates.size + ' Shifts' : 'Shift'}`}
           </Button>
         </DialogActions>
       </Dialog>

@@ -7,7 +7,6 @@ import {
   Typography,
   Paper,
   Stack,
-  Avatar,
   IconButton,
   Tooltip,
   Dialog,
@@ -78,10 +77,6 @@ const getColorByRole = (role?: string) => {
     ? "manager"
     : "default";
   return ROLE_COLORS[key];
-};
-
-const getInitials = (firstName?: string, lastName?: string) => {
-  return `${firstName?.[0] || ""}${lastName?.[0] || ""}`.toUpperCase();
 };
 
 export function ModernDragDropScheduler({
@@ -371,12 +366,12 @@ export function ModernDragDropScheduler({
                       onDragOver={handleDragOver}
                       onDrop={() => handleDrop(dayIdx, hour)}
                       sx={{
-                        height: "120px",
+                        minHeight: "80px",
                         borderRight: dayIdx < 6 ? "1px solid" : "none",
                         borderBottom: "1px solid",
                         borderColor: "divider",
                         bgcolor: isToday ? "rgba(46, 125, 50, 0.02)" : "background.paper",
-                        p: 0.75,
+                        p: 0.5,
                         transition: "all 0.2s ease",
                         "&:hover": {
                           bgcolor: isToday ? "rgba(46, 125, 50, 0.06)" : "grey.50",
@@ -399,7 +394,7 @@ export function ModernDragDropScheduler({
                               draggable={isManager}
                               onDragStart={() => handleDragStart(shift, dayIdx)}
                               sx={{
-                                p: 1,
+                                p: 0.75,
                                 bgcolor: "white",
                                 borderLeft: `4px solid ${colors.border}`,
                                 cursor: isManager ? "grab" : "default",
@@ -408,96 +403,81 @@ export function ModernDragDropScheduler({
                                 opacity: draggedShift?.id === shift.id ? 0.5 : 1,
                                 border: "1px solid",
                                 borderColor: "divider",
-                                boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1)",
+                                boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.1)",
                                 "&:hover": isManager
                                   ? {
-                                      boxShadow: "0 8px 16px 0 rgba(0, 0, 0, 0.15)",
-                                      transform: "translateY(-2px)",
+                                      boxShadow: "0 4px 12px 0 rgba(0, 0, 0, 0.15)",
+                                      transform: "translateY(-1px)",
                                     }
                                   : {
-                                      boxShadow: "0 2px 8px 0 rgba(0, 0, 0, 0.12)",
+                                      boxShadow: "0 2px 6px 0 rgba(0, 0, 0, 0.1)",
                                     },
-                                minHeight: `${Math.max(50, durationHours * 100 * 0.5)}px`,
+                                minHeight: "auto",
                                 display: "flex",
                                 flexDirection: "column",
                                 justifyContent: "space-between",
                               }}
                             >
-                              {/* Top Row - Avatar + Name + Icons */}
-                              <Box sx={{ display: "flex", alignItems: "flex-start", gap: 0.75 }}>
+                              {/* Compact Content */}
+                              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 0.5 }}>
                                 {isManager && (
-                                  <DragIcon sx={{ fontSize: 14, flexShrink: 0, color: "text.secondary" }} />
+                                  <DragIcon sx={{ fontSize: 12, flexShrink: 0, color: colors.border, mt: 0.25 }} />
                                 )}
                                 <Box sx={{ flex: 1, minWidth: 0 }}>
-                                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 0.25 }}>
-                                    <Avatar
-                                      sx={{
-                                        width: 24,
-                                        height: 24,
-                                        fontSize: "0.65rem",
-                                        bgcolor: colors.border,
-                                        color: "white",
-                                        fontWeight: 700,
-                                      }}
-                                    >
-                                      {getInitials(shift.user?.firstName, shift.user?.lastName)}
-                                    </Avatar>
-                                    <Typography
-                                      variant="caption"
-                                      fontWeight={700}
-                                      color="text.primary"
-                                      noWrap
-                                    >
-                                      {shift.user?.firstName}
-                                    </Typography>
-                                  </Box>
+                                  <Typography
+                                    variant="caption"
+                                    fontWeight={700}
+                                    color="text.primary"
+                                    noWrap
+                                    sx={{ display: "block", lineHeight: 1.2 }}
+                                  >
+                                    {shift.user?.firstName}
+                                  </Typography>
                                   {shift.user?.role && (
                                     <Typography
                                       variant="caption"
                                       sx={{
-                                        fontSize: "0.65rem",
-                                        color: "text.secondary",
+                                        fontSize: "0.6rem",
+                                        color: colors.border,
+                                        fontWeight: 600,
                                         display: "block",
+                                        lineHeight: 1,
                                       }}
                                     >
-                                      {shift.user.role}
+                                      {shift.user.role.slice(0, 3).toUpperCase()}
                                     </Typography>
                                   )}
                                 </Box>
                                 {isManager && (
-                                  <Stack direction="row" spacing={0.25} sx={{ flexShrink: 0 }}>
-                                    <Tooltip title="Edit shift">
-                                      <IconButton
-                                        size="small"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleEditClick(shift);
-                                        }}
-                                        sx={{
-                                          color: "text.secondary",
-                                          padding: "2px",
-                                          "&:hover": { color: "primary.main" },
-                                        }}
-                                      >
-                                        <EditIcon sx={{ fontSize: 14 }} />
-                                      </IconButton>
-                                    </Tooltip>
-                                    <Tooltip title="Delete shift">
-                                      <IconButton
-                                        size="small"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleDeleteClick(shift);
-                                        }}
-                                        sx={{
-                                          color: "text.secondary",
-                                          padding: "2px",
-                                          "&:hover": { color: "error.main" },
-                                        }}
-                                      >
-                                        <DeleteIcon sx={{ fontSize: 14 }} />
-                                      </IconButton>
-                                    </Tooltip>
+                                  <Stack direction="row" spacing={0} sx={{ flexShrink: 0 }}>
+                                    <IconButton
+                                      size="small"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleEditClick(shift);
+                                      }}
+                                      sx={{
+                                        color: "text.secondary",
+                                        padding: "2px",
+                                        "&:hover": { color: "primary.main" },
+                                      }}
+                                    >
+                                      <EditIcon sx={{ fontSize: 12 }} />
+                                    </IconButton>
+                                    <IconButton
+                                      size="small"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteClick(shift);
+                                      }}
+                                      sx={{
+                                        color: "text.secondary",
+                                        padding: "2px",
+                                        "&:hover": { color: "error.main" },
+                                      }}
+                                    >
+                                      <DeleteIcon sx={{ fontSize: 12 }} />
+                                    </IconButton>
                                   </Stack>
                                 )}
                               </Box>
@@ -506,9 +486,10 @@ export function ModernDragDropScheduler({
                               <Typography
                                 variant="caption"
                                 sx={{
-                                  fontSize: "0.7rem",
+                                  fontSize: "0.65rem",
                                   color: colors.border,
                                   fontWeight: 600,
+                                  lineHeight: 1,
                                 }}
                               >
                                 {format(startDate, "h:mm")} - {format(endDate, "h:mm a")}
@@ -627,27 +608,16 @@ export function ModernDragDropScheduler({
             <Stack spacing={3} sx={{ flex: 1 }}>
               {/* Employee Info */}
               <Paper variant="outlined" sx={{ p: 2 }}>
-                <Stack direction="row" spacing={2} alignItems="center">
-                  <Avatar
-                    sx={{
-                      width: 40,
-                      height: 40,
-                      bgcolor: getColorByRole(shiftToEdit.user?.role).border,
-                    }}
-                  >
-                    {getInitials(shiftToEdit.user?.firstName, shiftToEdit.user?.lastName)}
-                  </Avatar>
-                  <Box>
-                    <Typography variant="body2" fontWeight={600}>
-                      {shiftToEdit.user?.firstName} {shiftToEdit.user?.lastName}
+                <Box>
+                  <Typography variant="body2" fontWeight={600}>
+                    {shiftToEdit.user?.firstName} {shiftToEdit.user?.lastName}
+                  </Typography>
+                  {shiftToEdit.user?.role && (
+                    <Typography variant="caption" color="text.secondary">
+                      {shiftToEdit.user.role}
                     </Typography>
-                    {shiftToEdit.user?.role && (
-                      <Typography variant="caption" color="text.secondary">
-                        {shiftToEdit.user.role}
-                      </Typography>
-                    )}
-                  </Box>
-                </Stack>
+                  )}
+                </Box>
               </Paper>
 
               {/* Time Inputs */}

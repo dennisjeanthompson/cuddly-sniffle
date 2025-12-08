@@ -181,6 +181,104 @@ Before going live:
 - [ ] Implement rate limiting
 - [ ] Set up database backups in Neon
 
+## Render Configuration Details
+
+### Current Production Deployment
+
+**Service Details:**
+- **Service Name:** donmacchiatos
+- **Service ID:** srv-d4p54h3e5dus7381rtpg
+- **Repository:** dennisjeanthompson/cuddly-sniffle
+- **Branch:** main
+- **Live URL:** https://donmacchiatos.onrender.com
+- **Instance Type:** Free (0.1 CPU, 512 MB RAM)
+- **Region:** Oregon (US West)
+
+### Build Configuration
+
+**Root Directory:**
+```
+The Cafe/The Cafe
+```
+
+**Build Command:**
+```bash
+npm install && npm run build
+```
+
+**Start Command:**
+```bash
+npm run start
+```
+
+### Auto-Deployment
+
+- **Auto-Deploy:** Currently OFF (manual deploy mode)
+- **Deploy Hook:** Available (keep secret)
+- **Git Credentials:** dst8336@students.uc-bcf.edu.ph
+
+To enable auto-deploy:
+1. Go to Render dashboard → Settings
+2. Find "Auto-Deploy" section
+3. Toggle to "On"
+4. Now every `git push` to main will automatically redeploy
+
+### Monitoring & Health Checks
+
+- **Health Check Path:** `/healthz`
+- **Notifications:** Configured for failure notifications
+- **Logs:** Real-time accessible in Render dashboard
+
+### Build & Deploy Settings
+
+| Setting | Value |
+|---------|-------|
+| Build Command | `npm install && npm run build` |
+| Start Command | `npm run start` |
+| Root Directory | `The Cafe/The Cafe` |
+| Environment | production |
+| Node Version | 22.x (auto-detected) |
+
+### Environment Variables Required
+
+Set these in Render Dashboard → Environment:
+
+```
+NODE_ENV=production
+DATABASE_URL=postgresql://user:password@host/database
+PORT=10000
+```
+
+### Scaling Information
+
+**Current Limits (Free Tier):**
+- CPU: 0.1 shared CPU
+- Memory: 512 MB
+- Included free hours: 750 hours/month
+- Bandwidth: Unlimited
+- No custom domains on free tier
+
+**To upgrade:**
+1. In Render dashboard, click "Upgrade"
+2. Select instance type (Pro $7/month recommended)
+3. Gain: Full CPU, 2GB RAM, Always-on service
+4. Custom domains become available
+
+### PR Previews
+
+Currently disabled. To enable:
+1. Settings → PR Previews
+2. Choose "Automatic" or "Manual"
+3. Automatic: Preview every PR
+4. Manual: Only PRs with [render preview] in title
+
+### Edge Caching
+
+Available on paid instances only. Improves static asset delivery for:
+- JS bundles (vendors-*.js, main-*.js)
+- CSS files
+- Images and fonts
+
 ## Maintenance
 
 ### Regular Tasks

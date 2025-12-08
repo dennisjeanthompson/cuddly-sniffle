@@ -551,14 +551,11 @@ export default function MuiShiftTrading() {
                 <Box sx={{ py: 8, textAlign: "center" }}>
                   <SwapHorizIcon sx={{ fontSize: 64, color: "text.disabled", mb: 2 }} />
                   <Typography variant="h6" color="text.secondary">
-                    No trade requests
+                    No trade requests yet
                   </Typography>
                   <Typography variant="body2" color="text.disabled" sx={{ mb: 2 }}>
-                    Request to trade a shift with a teammate
+                    Use the "New Trade Request" button above to get started
                   </Typography>
-                  <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateDialogOpen(true)}>
-                    New Request
-                  </Button>
                 </Box>
               ) : (
                 myRequests.map((trade) => <TradeCard key={trade.id} trade={trade} type="outgoing" />)

@@ -4,6 +4,8 @@ import { isManager, getCurrentUser } from "@/lib/auth";
 import { getInitials } from "@/lib/utils";
 import { useRealtime } from "@/hooks/use-realtime";
 import { ResourceTimelineScheduler } from "@/components/schedule/resource-timeline-scheduler";
+import { WeekDragDropScheduler } from "@/components/schedule/week-drag-drop-scheduler";
+import { MonthDragDropScheduler } from "@/components/schedule/month-drag-drop-scheduler";
 import {
   format,
   addDays,
@@ -558,240 +560,29 @@ export default function MuiSchedule() {
         </Box>
       )}
 
-      {/* Traditional Calendar View */}
-      {!isLoading && !isError && (viewMode === 'week' || viewMode === 'month') && (
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: {
-              xs: "1fr",
-              sm: "repeat(2, 1fr)",
-              md: viewMode === 'week' ? "repeat(7, 1fr)" : "repeat(7, 1fr)",
-            },
-            gap: viewMode === 'week' ? 1.5 : 1,
-          }}
-        >
-          {/* Day Headers for Month View */}
-          {viewMode === 'month' && ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-            <Box key={day} sx={{ p: 1, textAlign: 'center', display: { xs: 'none', md: 'block' } }}>
-              <Typography variant="caption" fontWeight={600} color="text.secondary">
-                {day}
-              </Typography>
-            </Box>
-          ))}
-          
-          {/* Empty cells for month view alignment */}
-          {viewMode === 'month' && Array.from({ length: dateRange.start.getDay() }).map((_, i) => (
-            <Box key={`empty-${i}`} sx={{ display: { xs: 'none', md: 'block' } }} />
-          ))}
-          
-          {allDays.map((day) => {
-            const dayShifts = getShiftsForDay(day);
-            const isToday = isSameDay(day, new Date());
+      {/* Drag & Drop Week View */}
+      {!isLoading && !isError && viewMode === 'week' && (
+        <Box sx={{ mb: 3 }}>
+          <WeekDragDropScheduler
+            shifts={shifts}
+            employees={employees}
+            weekStart={weekStart}
+            onShiftUpdated={() => refetch()}
+            isManager={isManagerRole}
+          />
+        </Box>
+      )}
 
-            return (
-              <Card
-                key={day.toISOString()}
-                sx={{
-                  minHeight: viewMode === 'week' ? 280 : 100,
-                  maxHeight: viewMode === 'week' ? 400 : 'auto',
-                  borderRadius: 3,
-                  border: isToday ? 2 : 1,
-                  borderColor: isToday ? "primary.main" : "divider",
-                  bgcolor: isToday ? "rgba(46, 125, 50, 0.04)" : "background.paper",
-                  display: 'flex',
-                  flexDirection: 'column',
-                  transition: 'all 0.2s ease',
-                  '&:hover': {
-                    boxShadow: 3,
-                    borderColor: 'primary.light',
-                  }
-                }}
-              >
-                {/* Day Header - Fixed */}
-                <Box 
-                  sx={{ 
-                    p: 1.5, 
-                    borderBottom: 1, 
-                    borderColor: 'divider',
-                    bgcolor: isToday ? "rgba(46, 125, 50, 0.08)" : "grey.50",
-                    borderTopLeftRadius: 12,
-                    borderTopRightRadius: 12,
-                  }}
-                >
-                  <Stack direction="row" alignItems="center" justifyContent="space-between">
-                    <Box>
-                      <Typography
-                        variant="caption"
-                        color={isToday ? "primary.main" : "text.secondary"}
-                        fontWeight={600}
-                        sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}
-                      >
-                        {format(day, "EEE")}
-                      </Typography>
-                      <Typography
-                        variant={viewMode === 'week' ? "h5" : "body1"}
-                        fontWeight={isToday ? 700 : 600}
-                        color={isToday ? "primary.main" : "text.primary"}
-                      >
-                        {format(day, "d")}
-                      </Typography>
-                    </Box>
-                    {dayShifts.length > 0 && (
-                      <Chip 
-                        size="small" 
-                        label={dayShifts.length}
-                        color={isToday ? "primary" : "default"}
-                        sx={{ 
-                          height: 24, 
-                          minWidth: 24,
-                          fontWeight: 600,
-                          fontSize: '0.75rem'
-                        }} 
-                      />
-                    )}
-                  </Stack>
-                </Box>
-
-                {/* Shifts - Scrollable */}
-                <Box 
-                  sx={{ 
-                    flex: 1, 
-                    overflow: 'auto',
-                    p: 1.5,
-                    '&::-webkit-scrollbar': {
-                      width: 4,
-                    },
-                    '&::-webkit-scrollbar-track': {
-                      bgcolor: 'grey.100',
-                      borderRadius: 2,
-                    },
-                    '&::-webkit-scrollbar-thumb': {
-                      bgcolor: 'grey.300',
-                      borderRadius: 2,
-                    },
-                  }}
-                >
-                  <Stack spacing={1}>
-                    {dayShifts.length === 0 ? (
-                      viewMode === 'week' && (
-                        <Box sx={{ 
-                          py: 3, 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          justifyContent: 'center',
-                          flexDirection: 'column',
-                          gap: 0.5
-                        }}>
-                          <Typography
-                            variant="body2"
-                            color="text.disabled"
-                          >
-                            No shifts
-                          </Typography>
-                        </Box>
-                      )
-                    ) : viewMode === 'week' ? (
-                      dayShifts.map((shift) => (
-                        <Paper
-                          key={shift.id}
-                          elevation={0}
-                          sx={{
-                            p: 1.5,
-                            bgcolor: "rgba(46, 125, 50, 0.08)",
-                            borderRadius: 2,
-                            borderLeft: 3,
-                            borderColor: "primary.main",
-                            transition: 'all 0.15s ease',
-                            cursor: 'pointer',
-                            '&:hover': {
-                              bgcolor: "rgba(46, 125, 50, 0.12)",
-                              transform: 'translateX(2px)',
-                            }
-                          }}
-                        >
-                          <Stack direction="row" alignItems="flex-start" spacing={1}>
-                            <Stack direction="row" alignItems="center" spacing={1.5} sx={{ flex: 1 }}>
-                              <Avatar
-                                sx={{
-                                  width: 32,
-                                  height: 32,
-                                  bgcolor: "primary.main",
-                                  fontSize: "0.8rem",
-                                  fontWeight: 600,
-                                  flexShrink: 0,
-                                }}
-                              >
-                                {shift.user?.firstName?.[0] || "?"}
-                              </Avatar>
-                              <Box sx={{ flex: 1, minWidth: 0 }}>
-                                <Typography
-                                  variant="body2"
-                                  fontWeight={600}
-                                  noWrap
-                                  sx={{ mb: 0.25 }}
-                                >
-                                  {shift.user?.firstName || "Staff"}{" "}
-                                  {shift.user?.lastName?.[0] || ""}.
-                                </Typography>
-                                <Stack
-                                  direction="row"
-                                  alignItems="center"
-                                  spacing={0.5}
-                                >
-                                  <AccessTimeIcon
-                                    sx={{ fontSize: 13, color: "text.secondary" }}
-                                  />
-                                  <Typography
-                                    variant="caption"
-                                    color="text.secondary"
-                                    fontWeight={500}
-                                  >
-                                    {format(parseISO(shift.startTime), "h:mm a")} -{" "}
-                                    {format(parseISO(shift.endTime), "h:mm a")}
-                                  </Typography>
-                                </Stack>
-                              </Box>
-                            </Stack>
-                            {isManagerRole && (
-                              <IconButton
-                                size="small"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteShift(shift);
-                                }}
-                                sx={{
-                                  color: "error.main",
-                                  opacity: 0.6,
-                                  '&:hover': {
-                                    opacity: 1,
-                                    bgcolor: "rgba(211, 47, 47, 0.08)",
-                                  },
-                                  flexShrink: 0,
-                                }}
-                              >
-                                <DeleteIcon fontSize="small" />
-                              </IconButton>
-                            )}
-                          </Stack>
-                        </Paper>
-                      ))
-                    ) : (
-                      // Month view - compact display
-                      <Box>
-                        <Chip
-                          size="small"
-                          label={`${dayShifts.length} shift${dayShifts.length > 1 ? 's' : ''}`}
-                          color="primary"
-                          sx={{ fontSize: '0.7rem', height: 20 }}
-                        />
-                      </Box>
-                    )}
-                  </Stack>
-                </Box>
-              </Card>
-            );
-          })}
+      {/* Drag & Drop Month View */}
+      {!isLoading && !isError && viewMode === 'month' && (
+        <Box sx={{ mb: 3 }}>
+          <MonthDragDropScheduler
+            shifts={shifts}
+            employees={employees}
+            monthStart={selectedDate}
+            onShiftUpdated={() => refetch()}
+            isManager={isManagerRole}
+          />
         </Box>
       )}
 

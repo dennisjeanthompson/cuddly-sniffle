@@ -217,22 +217,10 @@ export default function MuiSchedule() {
         endDateTime = addDays(endDateTime, 1);
       }
       
-      // Client-side validation: Check for existing shifts on same date
+      // Client-side validation: Check for overlapping times on the same employee
       const selectedEmployee = employees.find(emp => emp.id === data.userId);
-      const shiftsOnDate = shifts.filter(shift => {
-        if (shift.userId !== data.userId) return false;
-        const shiftDate = parseISO(shift.startTime);
-        return isSameDay(shiftDate, startDateTime);
-      });
-
-      if (shiftsOnDate.length > 0) {
-        const times = shiftsOnDate
-          .map(s => `${format(parseISO(s.startTime), 'HH:mm')} - ${format(parseISO(s.endTime), 'HH:mm')}`)
-          .join(', ');
-        throw new Error(`${selectedEmployee?.firstName || 'Employee'} already has ${shiftsOnDate.length} shift(s) on this date: ${times}. Only one shift per day is allowed.`);
-      }
-
-      // Check for overlapping times on the same employee
+      
+      // Check for overlapping times (but allow multiple shifts on same day as long as times don't overlap)
       const overlappingShifts = shifts.filter(shift => {
         if (shift.userId !== data.userId) return false;
         const shiftStart = parseISO(shift.startTime);

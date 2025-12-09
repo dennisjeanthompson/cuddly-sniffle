@@ -518,22 +518,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Check if employee already has a shift on this date
-      const shiftDate = new Date(shiftData.startTime);
-      const existingShiftsOnDate = await storage.checkShiftOnDate(shiftData.userId, shiftDate);
-
-      if (existingShiftsOnDate.length > 0) {
-        const existingTimes = existingShiftsOnDate
-          .map(s => `${new Date(s.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(s.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`)
-          .join(', ');
-        
-        return res.status(409).json({
-          message: `Employee already has ${existingShiftsOnDate.length} shift(s) scheduled for this date: ${existingTimes}. Multiple shifts on the same day are not allowed.`,
-          code: 'DUPLICATE_SHIFT_DATE',
-          existingShifts: existingShiftsOnDate
-        });
-      }
-
       const shift = await storage.createShift(shiftData);
       res.json({ shift });
     } catch (error: any) {
@@ -587,20 +571,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             message: `Employee already has a shift scheduled from ${existingStart.toLocaleString()} to ${existingEnd.toLocaleString()}. Please choose a different time.`,
             code: 'SHIFT_CONFLICT',
             conflictingShift: overlappingShift
-          });
-        }
-
-        // Check if employee already has another shift on this date
-        const shiftsOnDate = await storage.checkShiftOnDate(newUserId, newStartTime, id);
-        if (shiftsOnDate.length > 0) {
-          const existingTimes = shiftsOnDate
-            .map(s => `${new Date(s.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(s.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`)
-            .join(', ');
-          
-          return res.status(409).json({
-            message: `Employee already has ${shiftsOnDate.length} shift(s) scheduled for this date: ${existingTimes}. Multiple shifts on the same day are not allowed.`,
-            code: 'DUPLICATE_SHIFT_DATE',
-            existingShifts: shiftsOnDate
           });
         }
       }

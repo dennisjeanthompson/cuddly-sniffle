@@ -13,7 +13,9 @@ import {
   CircularProgress,
   useTheme,
   alpha,
+  Container,
 } from "@mui/material";
+import Grid from "@mui/material/Grid";
 import {
   Visibility,
   VisibilityOff,
@@ -109,23 +111,28 @@ export default function MuiLogin() {
     <Box
       sx={{
         minHeight: "100vh",
-        display: "flex",
         bgcolor: "background.default",
+        display: "flex",
+        alignItems: "center",
       }}
     >
-      {/* Left Panel - Branding (Desktop Only) */}
-      <Box
-        sx={{
-          display: { xs: "none", lg: "flex" },
-          width: "50%",
-          background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.05)} 0%, ${theme.palette.background.default} 50%, ${alpha(theme.palette.secondary.main, 0.08)} 100%)`,
-          position: "relative",
-          overflow: "hidden",
-          flexDirection: "column",
-          justifyContent: "center",
-          p: 8,
-        }}
-      >
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Grid container spacing={6} alignItems="center" justifyContent="center" sx={{ minHeight: "100vh" }}>
+          {/* Left Panel - Feature Section (Desktop Only) */}
+          <Grid size={{ xs: 12, md: 6 }} sx={{ display: { xs: "none", md: "block" } }}>
+            <Box
+              sx={{
+                background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.05)} 0%, ${theme.palette.background.default} 50%, ${alpha(theme.palette.secondary.main, 0.08)} 100%)`,
+                position: "relative",
+                overflow: "hidden",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "center",
+                p: 6,
+                borderRadius: 4,
+                minHeight: 400,
+              }}
+            >
         {/* Decorative Elements */}
         <Box
           sx={{
@@ -207,19 +214,12 @@ export default function MuiLogin() {
             ))}
           </Stack>
         </Box>
-      </Box>
+            </Box>
+          </Grid>
 
-      {/* Right Panel - Login Form */}
-      <Box
-        sx={{
-          width: { xs: "100%", lg: "50%" },
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          p: { xs: 3, md: 6 },
-        }}
-      >
-        <Box sx={{ width: "100%", maxWidth: 400 }}>
+          {/* Right Panel - Login Form */}
+          <Grid size={{ xs: 12, sm: 8, md: 5, lg: 4 }}>
+            <Box sx={{ width: "100%" }}>
           {/* Mobile Logo */}
           <Box
             sx={{
@@ -383,8 +383,10 @@ export default function MuiLogin() {
           >
             © 2025 The Café. All rights reserved.
           </Typography>
-        </Box>
-      </Box>
+            </Box>
+          </Grid>
+        </Grid>
+      </Container>
     </Box>
   );
 }

@@ -236,6 +236,9 @@ export default function SchedulePage() {
     }
   };
 
+  // Scheduler ref for stability
+  const schedulerRef = useState<{ control: any } | null>(null);
+
   // Build config object
   const config = useMemo(() => ({
     viewType: "Resources",
@@ -258,17 +261,15 @@ export default function SchedulePage() {
     onTimeRangeSelected,
     onEventMoved,
     onEventResized,
-    onEventClick
+    onEventClick,
+    onBeforeEventRender: (args: any) => {
+      // styles are handled via backColor property in events
+    }
   }), [
     weekRange.start, 
     resources, 
     events, 
-    isManagerRole, 
-    // Handlers included indirectly via closures, but since we define them within component body 
-    // without useCallback, they change every render.
-    // However, DayPilot Scheduler component usually handles prop updates well.
-    // To be safer, we can memoize the whole config or just pass distinct props if the library supported it.
-    // We will leave them as is but ensure `config` is memoized to prevent constant re-renders of Scheduler.
+    isManagerRole
   ]);
 
   const handleDateChange = (days: number) => {
@@ -299,7 +300,7 @@ export default function SchedulePage() {
   }
 
   return (
-    <Box sx={{ p: 3, height: "calc(100vh - 100px)", display: "flex", flexDirection: "column" }}>
+    <div style={{ height: 'calc(100vh - 100px)', padding: '24px', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
       <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2}>
         <Stack direction="row" alignItems="center" spacing={2}>
@@ -324,9 +325,12 @@ export default function SchedulePage() {
       </Stack>
 
       {/* Main Scheduler Area */}
-      <Box sx={{ flexGrow: 1, position: "relative", border: "1px solid #e0e0e0", borderRadius: 2, overflow: "hidden" }}>
-        <Scheduler {...config} />
-      </Box>
+      <div style={{ flexGrow: 1, position: "relative", border: "1px solid #e0e0e0", borderRadius: 8, overflow: "hidden" }}>
+        <Scheduler 
+          {...config} 
+          ref={schedulerRef}
+        />
+      </div>
 
       {/* Edit Dialog */}
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="xs" fullWidth>
@@ -376,6 +380,6 @@ export default function SchedulePage() {
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </div>
   );
 }

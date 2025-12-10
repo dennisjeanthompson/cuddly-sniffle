@@ -1,4 +1,5 @@
 import { createRoot } from "react-dom/client";
+import React from "react";
 import App from "./App";
 import "./index.css";
 
@@ -48,7 +49,16 @@ if (!root) {
 }
 
 try {
-  createRoot(root).render(<App />);
+  // Conditionally disable StrictMode in dev to prevent double-mount bugs with legacy libs
+  if (import.meta.env.DEV) {
+    createRoot(root).render(<App />);
+  } else {
+    createRoot(root).render(
+      <React.StrictMode>
+        <App />
+      </React.StrictMode>
+    );
+  }
 } catch (error) {
   console.error("Failed to render app:", error);
   // Display error on page as fallback

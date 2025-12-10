@@ -1,6 +1,6 @@
-import { useState, useMemo, useEffect } from "react";
-import { Scheduler } from "@daypilot/daypilot-lite-react";
-import "@daypilot/daypilot-lite-react/styles/daypilot.css";
+import { useState, useMemo, useEffect, useRef } from "react";
+import StableScheduler from "@/components/StableScheduler";
+import SchedulerErrorBoundary from "@/components/SchedulerErrorBoundary";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { isManager } from "@/lib/auth";
@@ -10,6 +10,7 @@ import {
   endOfWeek,
   parseISO,
 } from "date-fns";
+import React from 'react';
 
 // MUI components
 import {
@@ -237,7 +238,7 @@ export default function SchedulePage() {
   };
 
   // Scheduler ref for stability
-  const schedulerRef = useState<{ control: any } | null>(null);
+  const schedulerRef = useRef<any>(null);
 
   // Build config object
   const config = useMemo(() => ({
@@ -318,10 +319,12 @@ export default function SchedulePage() {
 
       {/* Main Scheduler Area - Always rendered to prevent removeChild errors, hidden when loading */}
       <div style={{ flexGrow: 1, position: "relative", border: "1px solid #e0e0e0", borderRadius: 8, overflow: "hidden", display: isLoading ? 'none' : 'block' }}>
-        <Scheduler 
-          {...config} 
-          ref={schedulerRef}
-        />
+        <SchedulerErrorBoundary>
+          <StableScheduler 
+            {...config} 
+            ref={schedulerRef}
+          />
+        </SchedulerErrorBoundary>
       </div>
       
       {/* Loading Overlay */}

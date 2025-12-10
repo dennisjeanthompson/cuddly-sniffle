@@ -12,7 +12,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { MuiThemeProvider } from "@/components/mui/mui-theme-provider";
 
 // MUI Components
-import { Box, CircularProgress, Typography, Button, alpha } from "@mui/material";
+import { Box, CircularProgress, Typography, Button, alpha, Toolbar } from "@mui/material";
 import { LocalCafe as CoffeeIcon } from "@mui/icons-material";
 
 // MUI Layout Components
@@ -136,6 +136,8 @@ function DesktopLayout({ children }: { children: React.ReactNode }) {
       <MuiSidebar />
       <Box sx={{ flex: 1, display: "flex", flexDirection: "column", position: "relative", zIndex: 1 }}>
         <MuiHeader />
+        {/* Toolbar spacer - compensates for fixed AppBar height, prevents layout shift */}
+        <Toolbar />
         <Box component="main" sx={{ flex: 1, overflow: "auto" }}>
           {children}
         </Box>

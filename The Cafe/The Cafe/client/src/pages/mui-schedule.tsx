@@ -291,14 +291,6 @@ export default function SchedulePage() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" height="calc(100vh - 100px)">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <div style={{ height: 'calc(100vh - 100px)', padding: '24px', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
@@ -324,13 +316,20 @@ export default function SchedulePage() {
         </Button>
       </Stack>
 
-      {/* Main Scheduler Area */}
-      <div style={{ flexGrow: 1, position: "relative", border: "1px solid #e0e0e0", borderRadius: 8, overflow: "hidden" }}>
+      {/* Main Scheduler Area - Always rendered to prevent removeChild errors, hidden when loading */}
+      <div style={{ flexGrow: 1, position: "relative", border: "1px solid #e0e0e0", borderRadius: 8, overflow: "hidden", display: isLoading ? 'none' : 'block' }}>
         <Scheduler 
           {...config} 
           ref={schedulerRef}
         />
       </div>
+      
+      {/* Loading Overlay */}
+      {isLoading && (
+        <Box display="flex" justifyContent="center" alignItems="center" height="100%" position="absolute" top={0} left={0} right={0} bottom={0} bgcolor="rgba(255,255,255,0.7)" zIndex={10}>
+          <CircularProgress />
+        </Box>
+      )}
 
       {/* Edit Dialog */}
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="xs" fullWidth>

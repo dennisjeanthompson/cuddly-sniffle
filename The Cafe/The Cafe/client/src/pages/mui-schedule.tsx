@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { isManager, getCurrentUser } from "@/lib/auth";
 import { getInitials } from "@/lib/utils";
 import { useRealtime } from "@/hooks/use-realtime";
-import { MobiscrollScheduler } from "@/components/schedule/mobiscroll-scheduler";
+import { FullCalendarScheduler } from "@/components/schedule/fullcalendar-scheduler";
 import { MonthDragDropScheduler } from "@/components/schedule/month-drag-drop-scheduler";
 import {
   format,
@@ -541,10 +541,10 @@ export default function MuiSchedule() {
         </Alert>
       )}
 
-      {/* Mobiscroll Timeline Scheduler - Primary */}
+      {/* FullCalendar Timeline Scheduler - Primary */}
       {!isLoading && !isError && viewMode === 'schedule' && (
         <Box sx={{ mb: 3 }}>
-          <MobiscrollScheduler
+          <FullCalendarScheduler
             shifts={shifts}
             employees={employees}
             weekStart={weekStart}

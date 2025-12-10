@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { 
   Box, 
   Typography, 
@@ -13,20 +13,33 @@ import {
   Autocomplete, 
   Stack, 
   Snackbar, 
-  Alert 
+  Alert,
+  IconButton,
+  ToggleButton,
+  ToggleButtonGroup,
+  Paper,
+  Divider
 } from "@mui/material";
+import {
+  ChevronLeft as ChevronLeftIcon,
+  ChevronRight as ChevronRightIcon,
+  Today as TodayIcon,
+  GridView as WeekViewIcon,
+  ViewDay as DayViewIcon
+} from "@mui/icons-material";
+
+// Local Source Imports
+// Adjust the path based on your project structure, this assumes src/components/react-big-schedule is the root of the copy
 import { 
   Scheduler, 
   SchedulerData, 
   ViewType, 
   DATE_FORMAT 
-} from "react-big-schedule";
+} from "@/components/react-big-schedule/src/index"; 
+
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import dayjs from "dayjs";
-// CSS import usually handled at app level or here
-import "react-big-schedule/dist/css/style.css"; 
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -53,13 +66,116 @@ interface Employee {
 }
 
 // --- Styles ---
-// We use a container class to scope overrides if global CSS isn't enough
+// Scoped override to hide the default AntD header content if we can't disable it via props
 const schedulerContainerStyle = {
-  height: "calc(100vh - 100px)",
-  padding: "16px",
-  "& .scheduler-bg": { fontFamily: "inherit" },
-  // Hide specific libraries details
+  height: "calc(100vh - 84px)", // Adjust for app header
+  display: "flex",
+  flexDirection: "column",
+  // CSS HACKS to hide default header parts we are replacing
+  "& .header2-text": { 
+     display: "none !important" 
+  },
+  "& .scheduler-bg": { 
+      fontFamily: "inherit",
+      background: "transparent"
+  },
+  "& .scheduler-view": {
+      border: "none"
+  },
+  "& table": {
+      borderCollapse: "separate",
+      borderSpacing: 0
+  }
 };
+
+// --- Custom Toolbar Component ---
+const SchedulerToolbar = ({ schedulerData, onDataChange }: { schedulerData: SchedulerData, onDataChange: (data: SchedulerData) => void }) => {
+  const [viewType, setViewType] = useState(ViewType.Week);
+  
+  // Format the date range display
+  const getDateLabel = () => {
+    const start = dayjs(schedulerData.startDate);
+    if (schedulerData.viewType === ViewType.Week) {
+      const end = start.add(6, 'days');
+      return `${start.format("MMM D")} - ${end.format("MMM D, YYYY")}`;
+    }
+    return start.format("dddd, MMMM D, YYYY");
+  };
+
+  const handlePrev = () => {
+    schedulerData.prev();
+    schedulerData.setEvents(schedulerData.events);
+    onDataChange(new SchedulerData(schedulerData));
+  };
+
+  const handleNext = () => {
+    schedulerData.next();
+    schedulerData.setEvents(schedulerData.events);
+    onDataChange(new SchedulerData(schedulerData));
+  };
+
+  const handleToday = () => {
+    schedulerData.setDate(dayjs().format(DATE_FORMAT));
+    schedulerData.setEvents(schedulerData.events);
+    onDataChange(new SchedulerData(schedulerData));
+  };
+
+  const handleViewChange = (_: any, newView: number | null) => {
+    if (newView !== null) {
+      schedulerData.setViewType(newView, false, false);
+      schedulerData.setEvents(schedulerData.events);
+      setViewType(newView);
+      onDataChange(new SchedulerData(schedulerData));
+    }
+  };
+
+  return (
+    <Paper elevation={0} sx={{ 
+      p: 2, 
+      mb: 2, 
+      display: 'flex', 
+      alignItems: 'center', 
+      justifyContent: 'space-between',
+      borderBottom: '1px solid',
+      borderColor: 'divider',
+      borderRadius: 0
+    }}>
+      <Stack direction="row" spacing={2} alignItems="center">
+        <Stack direction="row" spacing={1}>
+           <IconButton onClick={handlePrev} size="small"><ChevronLeftIcon /></IconButton>
+           <Button 
+             variant="outlined" 
+             size="small" 
+             startIcon={<TodayIcon />} 
+             onClick={handleToday}
+             sx={{ textTransform: 'none', fontWeight: 600 }}
+           >
+             Today
+           </Button>
+           <IconButton onClick={handleNext} size="small"><ChevronRightIcon /></IconButton>
+        </Stack>
+        <Typography variant="h6" fontWeight="bold">
+          {getDateLabel()}
+        </Typography>
+      </Stack>
+
+      <ToggleButtonGroup 
+        value={schedulerData.viewType} 
+        exclusive 
+        onChange={handleViewChange} 
+        size="small"
+      >
+        <ToggleButton value={ViewType.Day} aria-label="day">
+           <DayViewIcon fontSize="small" sx={{ mr: 1 }} /> Day
+        </ToggleButton>
+        <ToggleButton value={ViewType.Week} aria-label="week">
+           <WeekViewIcon fontSize="small" sx={{ mr: 1 }} /> Week
+        </ToggleButton>
+      </ToggleButtonGroup>
+    </Paper>
+  );
+};
+
 
 const SchedulerComponent = () => {
   const queryClient = useQueryClient();
@@ -98,24 +214,20 @@ const SchedulerComponent = () => {
   });
 
   // 3. Initialize SchedulerData
-  // We use a ref to prevent recreation loop or flickering if easier, but state is standard.
-  // CRITICAL FIX: Ensure DATE_FORMAT matches the string we pass.
   useEffect(() => {
-    // Wait for data? Or show empty scheduler. Let's wait for basic readiness.
     if (loadingEmployees || loadingShifts) return;
 
-    // Current date string
+    // Use a slightly different approach: Init once, then update.
+    // Ideally use useMemo, but SchedulerData is mutable class.
+    
     const todayStr = dayjs().format(DATE_FORMAT);
-
-    // Create Instance
-    // ViewType.Week is standard.
     const schedulerData = new SchedulerData(
       todayStr,
       ViewType.Week,
       false, 
       false, 
       {
-        schedulerWidth: '100%',
+        schedulerWidth: '100%', // Use strictly string percentage
         responsiveByParent: true,
         defaultEventBgColor: "#2196f3",
         minuteStep: 30, 
@@ -123,15 +235,10 @@ const SchedulerComponent = () => {
         creatable: true,
         crossResourceMove: true,
         
-        // UI Configs matching user request
-        resourceName: "Resource Name",
-        taskName: "Task Name",
-        agendaViewHeader: "Agenda",
-        addMorePopoverHeaderFormat: "MMM D, YYYY dddd",
-        eventItemPopoverDateFormat: "MMM D",
-        nonAgendaDayCellHeaderFormat: "HA", // Date format for headers
-        nonAgendaOtherCellHeaderFormat: "ddd M/D", // Date format for Week view headers
-
+        // Disable library's own header if possible/supported or just style it away
+        // headerEnabled: false, // Not standard in older versions, we rely on CSS
+        
+        // Views
         views: [
           { viewName: 'Week', viewType: ViewType.Week, showAgenda: false, isEventPerspective: false },
           { viewName: 'Day', viewType: ViewType.Day, showAgenda: false, isEventPerspective: false },
@@ -139,45 +246,41 @@ const SchedulerComponent = () => {
       }
     );
 
-    // Set Locale 
-    // schedulerData.setSchedulerLocale('en'); // Defaults to en-US
-
-    // Mapped Resources
+    // Resources
     let resources = employees.map(emp => ({
       id: emp.id,
       name: `${emp.firstName} ${emp.lastName}`,
       role: emp.role || emp.position,
-      avatar: "", // We handle this in custom helper
+      avatar: "", 
       groupOnly: false
     }));
-    
-    // Safety fallback
     if (resources.length === 0) resources = [];
     schedulerData.setResources(resources);
 
-    // Mapped Events
+    // Events
     const events = shifts.map(shift => {
       const start = dayjs(shift.startTime);
-      const isMorning = start.hour() < 12;
+      const isMorning = start.hour() < 12; // Simple logic
       return {
         id: shift.id,
         start: dayjs(shift.startTime).format("YYYY-MM-DD HH:mm:ss"),
         end: dayjs(shift.endTime).format("YYYY-MM-DD HH:mm:ss"),
         resourceId: shift.userId,
-        title: "", // We use custom render
-        bgColor: isMorning ? "#60e81a" : "#f1e920", // Custom logic for visuals
-        // Extra data/props
-        showTitle: `${dayjs(shift.startTime).format("HH:mm")} - ${dayjs(shift.endTime).format("HH:mm")}`
+        // Visuals
+        bgColor: isMorning ? "#dcfce7" : "#fff7ed", // Tailwind-ish Pastel Green / Orange
+        borderColor: isMorning ? "#16a34a" : "#ea580c",
+        textColor: isMorning ? "#14532d" : "#7c2d12",
+        // Custom props
+        customTitle: `${dayjs(shift.startTime).format("HH:mm")} - ${dayjs(shift.endTime).format("HH:mm")}`
       };
     });
     schedulerData.setEvents(events);
 
     setViewModel(schedulerData);
-  }, [employees.length, shifts.length, loadingEmployees, loadingShifts]); 
-  // We use .length to trigger re-init only if count changes, typical pattern to avoid depth issues.
-  // In a real app with updates, we might use a hash or just accept re-renders.
+  }, [employees.length, shifts.length, loadingEmployees, loadingShifts]);
 
-  // --- Mutations ---
+
+  // --- Event Handlers & Mutations (Same as before, wired up) ---
   const createShiftMutation = useMutation({
     mutationFn: async (payload: any) => {
       const res = await apiRequest("POST", "/api/shifts", { ...payload, status: "scheduled" });
@@ -186,7 +289,7 @@ const SchedulerComponent = () => {
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["shifts"] })
   });
-
+  
   const updateShiftMutation = useMutation({
     mutationFn: async (payload: any) => {
       const res = await apiRequest("PUT", `/api/shifts/${payload.id}`, payload);
@@ -206,31 +309,7 @@ const SchedulerComponent = () => {
     }
   });
 
-  // --- Callbacks ---
-  const prevClick = (schedulerData: SchedulerData) => {
-    schedulerData.prev();
-    schedulerData.setEvents(schedulerData.events);
-    setViewModel(new SchedulerData(schedulerData));
-  };
-
-  const nextClick = (schedulerData: SchedulerData) => {
-    schedulerData.next();
-    schedulerData.setEvents(schedulerData.events);
-    setViewModel(new SchedulerData(schedulerData));
-  };
-
-  const onViewChange = (schedulerData: SchedulerData, view: any) => {
-    schedulerData.setViewType(view.viewType, view.showAgenda, view.isEventPerspective);
-    schedulerData.setEvents(schedulerData.events);
-    setViewModel(new SchedulerData(schedulerData));
-  };
-
-  const onSelectDate = (schedulerData: SchedulerData, date: string) => {
-    schedulerData.setDate(date);
-    schedulerData.setEvents(schedulerData.events);
-    setViewModel(new SchedulerData(schedulerData));
-  };
-
+  // Callbacks
   const eventClicked = (schedulerData: SchedulerData, event: any) => {
     setEditingEvent(event);
     setFormData({
@@ -252,10 +331,8 @@ const SchedulerComponent = () => {
   };
 
   const moveEvent = async (schedulerData: SchedulerData, event: any, slotId: string, slotName: string, start: string, end: string) => {
-    // Update local state first for snapiness
     schedulerData.moveEvent(event, slotId, slotName, start, end);
     setViewModel(new SchedulerData(schedulerData));
-
     try {
       await updateShiftMutation.mutateAsync({
         id: event.id,
@@ -264,7 +341,7 @@ const SchedulerComponent = () => {
         endTime: dayjs(end).toISOString()
       });
     } catch (e) {
-      setSnackbarMsg("Failed to move shift");
+      setSnackbarMsg("Move failed");
       setShowSnackbar(true);
     }
   };
@@ -272,100 +349,18 @@ const SchedulerComponent = () => {
   const updateEventStart = async (schedulerData: SchedulerData, event: any, newStart: string) => {
     schedulerData.updateEventStart(event, newStart);
     setViewModel(new SchedulerData(schedulerData));
-    await updateShiftMutation.mutateAsync({
-      id: event.id,
-      startTime: dayjs(newStart).toISOString(),
-      endTime: dayjs(event.end).toISOString()
-    });
+    await updateShiftMutation.mutateAsync({ id: event.id, startTime: dayjs(newStart).toISOString(), endTime: dayjs(event.end).toISOString() });
   };
 
   const updateEventEnd = async (schedulerData: SchedulerData, event: any, newEnd: string) => {
     schedulerData.updateEventEnd(event, newEnd);
     setViewModel(new SchedulerData(schedulerData));
-    await updateShiftMutation.mutateAsync({
-      id: event.id,
-      startTime: dayjs(event.start).toISOString(),
-      endTime: dayjs(newEnd).toISOString()
-    });
+    await updateShiftMutation.mutateAsync({ id: event.id, startTime: dayjs(event.start).toISOString(), endTime: dayjs(newEnd).toISOString() });
   };
-
-  const conflictOccurred = () => {
-    setSnackbarMsg("Conflict detected! Cannot place overlapping shifts.");
-    setShowSnackbar(true);
-  };
-
-  // --- UI Resolvers ---
   
-  // Custom Employee Row
-  const slotItemTemplateResolver = (schedulerData: any, slot: any, slotClickedFunc: any, width: any, clsName: any) => {
-    const emp = employees.find(e => e.id === slot.slotId);
-    return (
-      <div className={clsName} style={{ width, height: '100%', borderRight: '1px solid #e0e0e0' }} title={slot.slotName}>
-         <Box sx={{ display: 'flex', alignItems: 'center', p: 1, gap: 1.5, height: '100%' }}>
-           <Avatar sx={{ bgcolor: (emp?.role||'').includes('manager') ? '#e25dd2' : '#60e81a', width: 36, height: 36 }}>
-             {slot.slotName.charAt(0)}
-           </Avatar>
-           <Box>
-             <Typography variant="subtitle2" noWrap sx={{ fontWeight: 'bold', fontSize: '0.85rem' }}>{slot.slotName}</Typography>
-             <Typography variant="caption" display="block" color="text.secondary" noWrap sx={{ fontSize: '0.7rem' }}>
-               {emp?.role || "Staff"}
-             </Typography>
-           </Box>
-         </Box>
-      </div>
-    );
-  };
-
-  // Custom Event Block
-  const eventItemTemplateResolver = (schedulerData: any, event: any, bgColor: any, isStart: any, isEnd: any, mustAddCssClass: any, mustBeHeight: any) => {
-    return (
-        <div key={event.id} style={{
-            background: event.bgColor,
-            height: '100%',
-            width: '100%',
-            borderRadius: 4,
-            padding: '4px 6px',
-            color: '#1a1a1a', 
-            border: '1px solid rgba(0,0,0,0.1)',
-            overflow: 'hidden',
-            fontSize: '11px',
-            fontWeight: 700,
-            boxSizing: 'border-box',
-            display: 'flex',
-            alignItems: 'center',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-        }}>
-            {/* Show time range + custom title logic if needed */}
-             {event.showTitle} 
-             {/* If we wanted title: {event.title} */}
-        </div>
-    );
-  };
-
-  // Custom Header Cell (Standard date rendering + visual hints)
-  // This library makes it hard to split columns into "Morning/Afternoon" explicitly without a custom ViewType.
-  // We will decorate the header to look professional.
-  const nonAgendaCellHeaderTemplateResolver = (schedulerData: any, item: any, formattedDateItems: any, style: any) => {
-      const date = dayjs(item.time);
-      const isToday = date.isSame(dayjs(), 'day');
-      
-      return (
-          <div style={{
-              ...style, 
-              background: isToday ? 'transparent' : 'transparent', 
-              color: isToday ? '#1a1a1a' : '#555',
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
-          }}>
-              {/* Day Name */}
-              <Typography variant="caption" sx={{ fontWeight: 'bold', fontSize: '0.75rem', textTransform: 'uppercase' }}>
-                  {formattedDateItems[0]}
-              </Typography>
-              {/* Date */}
-              <Typography variant="caption" >
-                  {formattedDateItems[1]} 
-              </Typography>
-          </div>
-      );
+  const conflictOccurred = () => {
+      setSnackbarMsg("Conflict detected");
+      setShowSnackbar(true);
   };
 
   const handleDialogSave = async () => {
@@ -374,7 +369,6 @@ const SchedulerComponent = () => {
       startTime: dayjs(formData.startTime).toISOString(),
       endTime: dayjs(formData.endTime).toISOString()
     };
-
     if (editingEvent) {
       await updateShiftMutation.mutateAsync({ id: editingEvent.id, ...payload });
     } else {
@@ -384,43 +378,112 @@ const SchedulerComponent = () => {
   };
 
 
-  // --- Render ---
+  // --- Render Templates ---
+  
+  const slotItemTemplateResolver = (schedulerData: any, slot: any, slotClickedFunc: any, width: any, clsName: any) => {
+    const emp = employees.find(e => e.id === slot.slotId);
+    return (
+      <div className={clsName} style={{ width, height: '100%' }} title={slot.slotName}>
+         <Box sx={{ display: 'flex', alignItems: 'center', p: 1, gap: 1.5, height: '100%', borderRight: '1px solid #f0f0f0' }}>
+           <Avatar sx={{ bgcolor: (emp?.role||'').includes('manager') ? 'secondary.main' : 'primary.main', width: 36, height: 36 }}>
+             {slot.slotName.charAt(0)}
+           </Avatar>
+           <Box sx={{ minWidth: 0 }}>
+             <Typography variant="subtitle2" noWrap sx={{ fontWeight: 600, fontSize: '0.85rem' }}>{slot.slotName}</Typography>
+             <Typography variant="caption" display="block" color="text.secondary" noWrap sx={{ fontSize: '0.7rem' }}>
+               {emp?.role || "Staff"}
+             </Typography>
+           </Box>
+         </Box>
+      </div>
+    );
+  };
 
-  if (loadingEmployees || loadingShifts) {
-    return <Box sx={{ display: 'flex', justifyContent: 'center', p: 8 }}><CircularProgress /></Box>;
-  }
+  const eventItemTemplateResolver = (schedulerData: any, event: any, bgColor: any, isStart: any, isEnd: any, mustAddCssClass: any, mustBeHeight: any) => {
+    return (
+        <div key={event.id} style={{
+            background: event.bgColor,
+            borderLeft: `3px solid ${event.borderColor}`,
+            height: '100%',
+            width: '100%',
+            borderRadius: 4,
+            padding: '2px 6px',
+            color: event.textColor, 
+            overflow: 'hidden',
+            fontSize: '11px',
+            fontWeight: 600,
+            boxSizing: 'border-box',
+            display: 'flex',
+            alignItems: 'center',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+        }}>
+            {event.customTitle}
+        </div>
+    );
+  };
+  
+  const nonAgendaCellHeaderTemplateResolver = (schedulerData: any, item: any, formattedDateItems: any, style: any) => {
+      const date = dayjs(item.time);
+      const isToday = date.isSame(dayjs(), 'day');
+      return (
+          <div style={{
+              ...style,
+              backgroundColor: isToday ? '#fffbeb' : '#fff', // Slight highlight for today
+              borderBottom: '1px solid #e0e0e0',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
+          }}>
+              <Typography variant="caption" sx={{ fontWeight: 'bold', fontSize: '0.75rem', textTransform: 'uppercase', color: isToday ? 'primary.main' : 'text.primary' }}>
+                  {formattedDateItems[0]}
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                  {formattedDateItems[1]}
+              </Typography>
+              {/* Optional: Add Morning/Afternoon visual divider if we had more vertical space */}
+          </div>
+      );
+  };
 
-  // Not ready?
-  if (!viewModel) {
-     return <Box sx={{ display: 'flex', justifyContent: 'center', p: 8 }}><CircularProgress /></Box>;
-  }
+
+  // --- Main Render ---
+
+  if (loadingEmployees || loadingShifts) return <Box sx={{ display: 'flex', justifyContent: 'center', p: 8 }}><CircularProgress /></Box>;
+  if (!viewModel) return <Box sx={{ display: 'flex', justifyContent: 'center', p: 8 }}><CircularProgress /></Box>;
 
   return (
     <Box sx={schedulerContainerStyle}>
-      <DndProvider backend={HTML5Backend}>
-        <Scheduler
-          schedulerData={viewModel}
-          prevClick={prevClick}
-          nextClick={nextClick}
-          onSelectDate={onSelectDate}
-          onViewChange={onViewChange}
-          eventItemClick={eventClicked}
-          viewEventClick={eventClicked}
-          viewEventText="Edit"
-          viewEvent2Text="Delete"
-          viewEvent2Click={() => {}}
-          updateEventStart={updateEventStart}
-          updateEventEnd={updateEventEnd}
-          moveEvent={moveEvent}
-          newEvent={newEvent}
-          conflictOccurred={conflictOccurred}
-          slotItemTemplateResolver={slotItemTemplateResolver}
-          eventItemTemplateResolver={eventItemTemplateResolver}
-          nonAgendaCellHeaderTemplateResolver={nonAgendaCellHeaderTemplateResolver}
-        />
-      </DndProvider>
+      {/* Custom Toolbar */}
+      <SchedulerToolbar 
+        schedulerData={viewModel} 
+        onDataChange={(newData) => setViewModel(newData)} 
+      />
+      
+      {/* Scheduler with Dnd */}
+      <Box sx={{ flexGrow: 1, position: 'relative', overflow: 'hidden' }}>
+        <DndProvider backend={HTML5Backend}>
+            <Scheduler
+            schedulerData={viewModel}
+            prevClick={()=>{}} // Handled by Toolbar
+            nextClick={()=>{}}
+            onSelectDate={()=>{}}
+            onViewChange={()=>{}}
+            eventItemClick={eventClicked}
+            viewEventClick={eventClicked}
+            viewEventText="Edit"
+            viewEvent2Text="Delete"
+            viewEvent2Click={() => {}}
+            updateEventStart={updateEventStart}
+            updateEventEnd={updateEventEnd}
+            moveEvent={moveEvent}
+            newEvent={newEvent}
+            conflictOccurred={conflictOccurred}
+            slotItemTemplateResolver={slotItemTemplateResolver}
+            eventItemTemplateResolver={eventItemTemplateResolver}
+            nonAgendaCellHeaderTemplateResolver={nonAgendaCellHeaderTemplateResolver}
+            />
+        </DndProvider>
+      </Box>
 
-      {/* Editor Dialog */}
+      {/* Dialogs */}
       <Dialog open={showEditDialog} onClose={() => setShowEditDialog(false)} fullWidth maxWidth="xs">
         <DialogTitle>{editingEvent ? "Edit Shift" : "New Shift"}</DialogTitle>
         <DialogContent>

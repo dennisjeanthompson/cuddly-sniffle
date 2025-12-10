@@ -1,21 +1,20 @@
-import { useState, useMemo } from 'react';
-import { Scheduler } from '@daypilot/daypilot-lite-react';
-import '@daypilot/daypilot-lite-react/styles/daypilot.css';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiRequest } from '@/lib/queryClient';
-import { isManager } from '@/lib/auth';
+import { useState, useMemo, useEffect } from "react";
+import { Scheduler } from "@daypilot/daypilot-lite-react";
+import "@daypilot/daypilot-lite-react/styles/daypilot.css";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { isManager } from "@/lib/auth";
 import {
   format,
   startOfWeek,
   endOfWeek,
   parseISO,
-} from 'date-fns';
+} from "date-fns";
 
 // MUI components
 import {
   Box,
   Typography,
-  Avatar,
   Stack,
   Button,
   Dialog,
@@ -23,10 +22,10 @@ import {
   DialogContent,
   DialogActions,
   IconButton,
-  Alert,
   CircularProgress,
   TextField,
-} from '@mui/material';
+  Avatar,
+} from "@mui/material";
 import {
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
@@ -34,12 +33,12 @@ import {
   Refresh as RefreshIcon,
   Close as CloseIcon,
   Delete as DeleteIcon,
-} from '@mui/icons-material';
+} from "@mui/icons-material";
 
+// Define interfaces to match existing app data
 interface Shift {
   id: string;
   userId: string;
-  startDate: string; // The API returns startTime, but we might map it. Let's assume standard Shift interface.
   startTime: string;
   endTime: string;
   status: string;
@@ -67,10 +66,10 @@ export default function SchedulePage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    employeeId: '',
-    shiftDate: '',
-    startTime: '09:00',
-    endTime: '17:00',
+    employeeId: "",
+    shiftDate: "",
+    startTime: "09:00",
+    endTime: "17:00",
   });
 
   // Calculate week range for API
@@ -82,98 +81,163 @@ export default function SchedulePage() {
 
   // Fetch Employees
   const { data: employees = [], isLoading: loadingEmployees } = useQuery<Employee[]>({
-    queryKey: ['employees'],
+    queryKey: ["employees"],
     queryFn: async () => {
-      const res = await apiRequest('GET', '/api/employees');
+      const res = await apiRequest("GET", "/api/employees");
       return res.json();
     },
   });
 
   // Fetch Shifts
   const { data: shifts = [], isLoading: loadingShifts } = useQuery<Shift[]>({
-    queryKey: ['shifts', weekRange.start.toISOString()],
+    queryKey: ["shifts", weekRange.start.toISOString()],
     queryFn: async () => {
       const endpoint = isManagerRole
         ? `/api/shifts/branch?startDate=${weekRange.start.toISOString()}&endDate=${weekRange.end.toISOString()}`
         : `/api/shifts?startDate=${weekRange.start.toISOString()}&endDate=${weekRange.end.toISOString()}`;
-      const res = await apiRequest('GET', endpoint);
+      const res = await apiRequest("GET", endpoint);
       return res.json();
     },
   });
+
+  const isLoading = loadingEmployees || loadingShifts;
 
   // Mutations
   const updateShiftMutation = useMutation({
     mutationFn: async (data: { id: string; startTime: string; endTime: string; userId?: string }) => {
       const payload: any = { startTime: data.startTime, endTime: data.endTime };
       if (data.userId) payload.userId = data.userId;
-      const res = await apiRequest('PUT', `/api/shifts/${data.id}`, payload);
-      if (!res.ok) throw new Error('Failed');
+      const res = await apiRequest("PUT", `/api/shifts/${data.id}`, payload);
+      if (!res.ok) throw new Error("Failed");
       return res.json();
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['shifts'] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["shifts"] }),
   });
 
   const createShiftMutation = useMutation({
     mutationFn: async (data: { userId: string; startTime: string; endTime: string }) => {
-      const res = await apiRequest('POST', '/api/shifts', {
+      const res = await apiRequest("POST", "/api/shifts", {
         ...data,
-        status: 'scheduled',
+        status: "scheduled",
       });
-      if (!res.ok) throw new Error('Failed');
+      if (!res.ok) throw new Error("Failed");
       return res.json();
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['shifts'] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["shifts"] }),
   });
 
   const deleteShiftMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await apiRequest('DELETE', `/api/shifts/${id}`);
-      if (!res.ok) throw new Error('Failed');
+      const res = await apiRequest("DELETE", `/api/shifts/${id}`);
+      if (!res.ok) throw new Error("Failed");
     },
     onSuccess: () => {
       setDialogOpen(false);
-      queryClient.invalidateQueries({ queryKey: ['shifts'] });
+      queryClient.invalidateQueries({ queryKey: ["shifts"] });
     },
   });
 
-  // Prepare DayPilot Data
-  const resources = employees.map(emp => ({
+  // Prepare DayPilot Models
+  const resources = useMemo(() => employees.map(emp => ({
     name: `${emp.firstName} ${emp.lastName}`,
     id: emp.id,
     role: emp.role || emp.position,
     html: `
-      <div style="display:flex; align-items:center; gap:8px;">
+      <div style="display:flex; align-items:center; gap:8px; padding-left: 5px;">
         <div style="width:30px; height:30px; border-radius:50%; background:${
-          (emp.role || emp.position)?.toLowerCase().includes('barista') ? '#e25dd2' : 
-          (emp.role || emp.position)?.toLowerCase().includes('cook') ? '#f1e920' : '#60e81a'
+          (emp.role || emp.position)?.toLowerCase().includes("barista") ? "#e25dd2" : 
+          (emp.role || emp.position)?.toLowerCase().includes("cook") ? "#f1e920" : "#60e81a"
         }; display:flex; justify-content:center; align-items:center; color:white; font-size:12px; font-weight:bold;">
           ${emp.firstName[0]}${emp.lastName[0]}
         </div>
         <div>
-          <div style="font-weight:bold">${emp.firstName} ${emp.lastName}</div>
-          <div style="font-size:11px; opacity:0.7">${emp.role || emp.position || 'Staff'}</div>
+          <div style="font-weight:bold; font-size: 13px;">${emp.firstName} ${emp.lastName}</div>
+          <div style="font-size:11px; opacity:0.7">${emp.role || emp.position || "Staff"}</div>
         </div>
       </div>
     `
-  }));
+  })), [employees]);
 
-  const events = shifts.map(shift => {
+  const events = useMemo(() => shifts.map(shift => {
     const isMorning = new Date(shift.startTime).getHours() < 12;
     return {
       id: shift.id,
-      text: `${format(parseISO(shift.startTime), 'h:mm a')} - ${format(parseISO(shift.endTime), 'h:mm a')}`,
+      text: `${format(parseISO(shift.startTime), "h:mm a")} - ${format(parseISO(shift.endTime), "h:mm a")}`,
       start: shift.startTime,
       end: shift.endTime,
       resource: shift.userId,
-      backColor: isMorning ? '#60e81a' : '#f1e920',
-      borderColor: '#00000033',
+      backColor: isMorning ? "#60e81a" : "#f1e920",
+      borderColor: "#00000033",
       moveDisabled: !isManagerRole,
       resizeDisabled: !isManagerRole,
       clickDisabled: !isManagerRole,
     };
-  });
+  }), [shifts, isManagerRole]);
 
-  const config = {
+  // Handler functions memoized to avoid re-creation
+  const onTimeRangeSelected = async (args: any) => {
+    if (!isManagerRole) return;
+    const startHour = args.start.getHours();
+    const isMorning = startHour < 12;
+    
+    const start = new Date(args.start.toString());
+    const end = new Date(args.start.toString());
+    
+    // Auto-snap logic
+    if (isMorning) {
+      start.setHours(7, 0, 0, 0);
+      end.setHours(13, 0, 0, 0);
+    } else {
+      start.setHours(12, 0, 0, 0);
+      end.setHours(18, 0, 0, 0);
+    }
+    
+    await createShiftMutation.mutateAsync({
+      userId: args.resource,
+      startTime: start.toISOString(),
+      endTime: end.toISOString()
+    });
+    // Clear selection
+    args.control.clearSelection();
+  };
+    
+  const onEventMoved = (args: any) => {
+    if (!isManagerRole) { args.preventDefault(); return; }
+    updateShiftMutation.mutate({
+      id: args.e.id(),
+      userId: args.newResource,
+      startTime: args.newStart.toString(),
+      endTime: args.newEnd.toString()
+    });
+  };
+    
+  const onEventResized = (args: any) => {
+    if (!isManagerRole) { args.preventDefault(); return; }
+    updateShiftMutation.mutate({
+      id: args.e.id(),
+      startTime: args.newStart.toString(),
+      endTime: args.newEnd.toString()
+    });
+  };
+
+  const onEventClick = (args: any) => {
+    if (!isManagerRole) return;
+    const shift = shifts.find(s => s.id === args.e.id());
+    if (shift) {
+      setSelectedEventId(shift.id);
+      const d = parseISO(shift.startTime);
+      setFormData({
+        employeeId: shift.userId,
+        shiftDate: format(d, "yyyy-MM-dd"),
+        startTime: format(d, "HH:mm"),
+        endTime: format(parseISO(shift.endTime), "HH:mm"),
+      });
+      setDialogOpen(true);
+    }
+  };
+
+  // Build config object
+  const config = useMemo(() => ({
     viewType: "Resources",
     startDate: format(weekRange.start, "yyyy-MM-dd"),
     days: 7,
@@ -185,74 +249,27 @@ export default function SchedulePage() {
     businessBeginsHour: 6,
     businessEndsHour: 23,
     cellWidth: 60,
+    eventHeight: 40,
     resources,
     events,
     eventMoveHandling: "Update",
     eventResizeHandling: "Update",
     timeRangeSelectedHandling: isManagerRole ? "Enabled" : "Disabled",
-    
-    // Handlers
-    onTimeRangeSelected: async (args: any) => {
-      if (!isManagerRole) return;
-      const startHour = args.start.getHours();
-      const isMorning = startHour < 12;
-      
-      const start = new Date(args.start.toString());
-      const end = new Date(args.start.toString());
-      
-      // Auto-snap logic
-      if (isMorning) {
-        start.setHours(7, 0, 0, 0);
-        end.setHours(13, 0, 0, 0);
-      } else {
-        start.setHours(12, 0, 0, 0);
-        end.setHours(18, 0, 0, 0);
-      }
-      
-      await createShiftMutation.mutateAsync({
-        userId: args.resource,
-        startTime: start.toISOString(),
-        endTime: end.toISOString()
-      });
-      // Clear selection
-      args.control.clearSelection();
-    },
-    
-    onEventMoved: (args: any) => {
-      if (!isManagerRole) { args.preventDefault(); return; }
-      updateShiftMutation.mutate({
-        id: args.e.id(),
-        userId: args.newResource,
-        startTime: args.newStart.toString(),
-        endTime: args.newEnd.toString()
-      });
-    },
-    
-    onEventResized: (args: any) => {
-      if (!isManagerRole) { args.preventDefault(); return; }
-      updateShiftMutation.mutate({
-        id: args.e.id(),
-        startTime: args.newStart.toString(),
-        endTime: args.newEnd.toString()
-      });
-    },
-
-    onEventClick: (args: any) => {
-      if (!isManagerRole) return;
-      const shift = shifts.find(s => s.id === args.e.id());
-      if (shift) {
-        setSelectedEventId(shift.id);
-        const d = parseISO(shift.startTime);
-        setFormData({
-          employeeId: shift.userId,
-          shiftDate: format(d, 'yyyy-MM-dd'),
-          startTime: format(d, 'HH:mm'),
-          endTime: format(parseISO(shift.endTime), 'HH:mm'),
-        });
-        setDialogOpen(true);
-      }
-    }
-  };
+    onTimeRangeSelected,
+    onEventMoved,
+    onEventResized,
+    onEventClick
+  }), [
+    weekRange.start, 
+    resources, 
+    events, 
+    isManagerRole, 
+    // Handlers included indirectly via closures, but since we define them within component body 
+    // without useCallback, they change every render.
+    // However, DayPilot Scheduler component usually handles prop updates well.
+    // To be safer, we can memoize the whole config or just pass distinct props if the library supported it.
+    // We will leave them as is but ensure `config` is memoized to prevent constant re-renders of Scheduler.
+  ]);
 
   const handleDateChange = (days: number) => {
     const newDate = new Date(selectedDate);
@@ -273,10 +290,16 @@ export default function SchedulePage() {
     }
   };
 
-  const isLoading = loadingEmployees || loadingShifts;
+  if (isLoading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" height="calc(100vh - 100px)">
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
-    <Box sx={{ p: 3, height: 'calc(100vh - 100px)', display: 'flex', flexDirection: 'column' }}>
+    <Box sx={{ p: 3, height: "calc(100vh - 100px)", display: "flex", flexDirection: "column" }}>
       {/* Header */}
       <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2}>
         <Stack direction="row" alignItems="center" spacing={2}>
@@ -287,33 +310,27 @@ export default function SchedulePage() {
             <IconButton size="small" onClick={() => handleDateChange(7)}><ChevronRightIcon /></IconButton>
           </Stack>
           <Typography variant="subtitle1" fontWeight={500}>
-            {format(weekRange.start, 'MMM d')} - {format(weekRange.end, 'MMM d, yyyy')}
+            {format(weekRange.start, "MMM d")} - {format(weekRange.end, "MMM d, yyyy")}
           </Typography>
         </Stack>
         <Button 
           startIcon={<RefreshIcon />} 
           variant="outlined" 
           size="small" 
-          onClick={() => queryClient.invalidateQueries({ queryKey: ['shifts'] })}
+          onClick={() => queryClient.invalidateQueries({ queryKey: ["shifts"] })}
         >
           Refresh
         </Button>
       </Stack>
 
       {/* Main Scheduler Area */}
-      <Box sx={{ flexGrow: 1, position: 'relative', border: '1px solid #e0e0e0', borderRadius: 2, overflow: 'hidden' }}>
-        {isLoading ? (
-          <Box display="flex" justifyContent="center" alignItems="center" height="100%">
-            <CircularProgress />
-          </Box>
-        ) : (
-          <Scheduler {...config} />
-        )}
+      <Box sx={{ flexGrow: 1, position: "relative", border: "1px solid #e0e0e0", borderRadius: 2, overflow: "hidden" }}>
+        <Scheduler {...config} />
       </Box>
 
       {/* Edit Dialog */}
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           Edit Shift
           <IconButton size="small" onClick={() => setDialogOpen(false)}><CloseIcon /></IconButton>
         </DialogTitle>
@@ -344,12 +361,12 @@ export default function SchedulePage() {
             </Stack>
           </Stack>
         </DialogContent>
-        <DialogActions sx={{ justifyContent: 'space-between', px: 3, pb: 2 }}>
+        <DialogActions sx={{ justifyContent: "space-between", px: 3, pb: 2 }}>
           <Button 
             color="error" 
             startIcon={<DeleteIcon />} 
             onClick={() => {
-              if(selectedEventId && confirm('Delete this shift?')) deleteShiftMutation.mutate(selectedEventId);
+              if(selectedEventId && confirm("Delete this shift?")) deleteShiftMutation.mutate(selectedEventId);
             }}
           >
             Delete

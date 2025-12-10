@@ -1,30 +1,33 @@
-import React, { useMemo, useCallback } from "react";
-import { Scheduler } from "@aldabil/react-scheduler";
-import type {
-  ProcessedEvent,
-  SchedulerRef,
-  SchedulerProps,
-} from "@aldabil/react-scheduler/types";
-import {
-  Box,
-  Typography,
-  Avatar,
-  CircularProgress,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  TextField,
-  Autocomplete,
-  Stack,
-  FormControlLabel,
-  Switch,
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { 
+  Box, 
+  Typography, 
+  Avatar, 
+  CircularProgress, 
+  Dialog, 
+  DialogTitle, 
+  DialogContent, 
+  DialogActions, 
+  Button, 
+  TextField, 
+  Autocomplete, 
+  Stack, 
+  Snackbar, 
+  Alert 
 } from "@mui/material";
+import { 
+  Scheduler, 
+  SchedulerData, 
+  ViewType, 
+  DATE_FORMAT, 
+  DemoData 
+} from "react-big-schedule";
+import { DndProvider } from "react-dnd";
+import { HTML5Backend } from "react-dnd-html5-backend";
+import dayjs from "dayjs";
+import "react-big-schedule/dist/css/style.css";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { format, parseISO } from "date-fns";
-import { enUS } from "date-fns/locale";
 
 // --- Types ---
 
@@ -49,14 +52,24 @@ interface Employee {
   position?: string;
 }
 
-// --- styled-components or internal styles ---
-// We can use the props for visual customization directly.
+// --- Scheduler Wrapper Component ---
 
-export default function SchedulePage() {
+const SchedulerComponent = () => {
   const queryClient = useQueryClient();
-  const calendarRef = React.useRef<SchedulerRef>(null);
+  const [viewModel, setViewModel] = useState<SchedulerData | null>(null);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showSnackbar, setShowSnackbar] = useState(false);
+  const [snackbarMsg, setSnackbarMsg] = useState("");
+  
+  // Dialog State
+  const [editingEvent, setEditingEvent] = useState<any>(null);
+  const [formData, setFormData] = useState({
+    resourceId: "",
+    startTime: "",
+    endTime: ""
+  });
 
-  // 1. Fetch Employees (Resources)
+  // 1. Fetch Employees
   const { data: employees = [], isLoading: loadingEmployees } = useQuery<Employee[]>({
     queryKey: ["employees"],
     queryFn: async () => {
@@ -66,288 +79,347 @@ export default function SchedulePage() {
     },
   });
 
-  // Map employees to Scheduler Resources
-  const resources = useMemo(() => {
-    return employees.map((emp) => ({
-      admin_id: emp.id,
-      title: `${emp.firstName} ${emp.lastName}`,
-      subtitle: emp.role || emp.position || "Staff",
-      avatar: "", // could use a URL if available, or we handle visuals in header
-      color: (emp.role || emp.position)?.toLowerCase().includes("manager") ? "#e25dd2" : "#60e81a",
+  // 2. Fetch Shifts (Reactive to view change if we implemented range query, for now fetching all for demo simplicity or current week)
+  // We'll stick to a simple fetch for the "current" range or just all shifts since the library filters internally or we filter manually.
+  // For production, we'd sync this with viewModel.startDate / endDate
+  const { data: shifts = [], isLoading: loadingShifts } = useQuery<Shift[]>({
+    queryKey: ["shifts"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/shifts"); 
+      const data = await res.json();
+      return (data.shifts || data) || [];
+    },
+  });
+
+  // 3. Initialize SchedulerData
+  useEffect(() => {
+    if (loadingEmployees || loadingShifts) return;
+
+    // Config
+    const schedulerData = new SchedulerData(
+      dayjs().format(DATE_FORMAT), 
+      ViewType.Week, 
+      false, 
+      false, 
+      {
+        schedulerWidth: '100%',
+        schedulerMaxHeight: 0,
+        responsiveByParent: true,
+        defaultEventBgColor: "#2196f3",
+        minuteStep: 30, // 30 min resolution for accuracy
+        checkConflict: true,
+        creatable: true,
+        crossResourceMove: true,
+        views: [
+          { viewName: 'Week', viewType: ViewType.Week, showAgenda: false, isEventPerspective: false },
+          { viewName: 'Day', viewType: ViewType.Day, showAgenda: false, isEventPerspective: false },
+        ],
+      }
+    );
+
+    // Set Locale if needed
+    // schedulerData.setSchedulerLocale('en');
+
+    // Mapped Resources
+    const resources = employees.map(emp => ({
+      id: emp.id,
+      name: `${emp.firstName} ${emp.lastName}`,
+      role: emp.role || emp.position,
+      groupOnly: false
     }));
-  }, [employees]);
+    schedulerData.setResources(resources);
 
-  // 2. Data Fetching (getRemoteEvents)
-  const fetchRemote = async (query: any): Promise<ProcessedEvent[]> => {
-    // query includes { start, end, view }
-    // API expects ISO strings
-    const startStr = query.start.toISOString();
-    const endStr = query.end.toISOString();
-    
-    // Adjust endpoint based on user role if needed, but here assuming general access
-    const res = await apiRequest("GET", `/api/shifts?startDate=${startStr}&endDate=${endStr}`);
-    const data = await res.json();
-    const rawShifts: Shift[] = data.shifts || data; // handle {shifts:[]} or []
-
-    // Map to ProcessedEvent
-    return rawShifts.map((s) => {
-      const start = new Date(s.startTime);
-      const end = new Date(s.endTime);
-      const isMorning = start.getHours() < 12;
-
+    // Mapped Events
+    const events = shifts.map(shift => {
+      const start = dayjs(shift.startTime);
+      const isMorning = start.hour() < 12;
       return {
-        event_id: s.id,
-        title: `${format(start, "h:mm a")} - ${format(end, "h:mm a")}`,
-        start,
-        end,
-        assignee: s.userId, // Map to resource
-        color: isMorning ? "#60e81a" : "#f1e920", // Morning vs Afternoon colors
-        textColor: "#1a1a1a",
-        editable: true,
-        deletable: true,
-        draggable: true,
+        id: shift.id,
+        start: dayjs(shift.startTime).format("YYYY-MM-DD HH:mm:ss"),
+        end: dayjs(shift.endTime).format("YYYY-MM-DD HH:mm:ss"),
+        resourceId: shift.userId,
+        title: "", // We render custom content, no default title needed
+        bgColor: isMorning ? "#60e81a" : "#f1e920",
+        // Custom data for our templates
+        customTitle: `${dayjs(shift.startTime).format("HH:mm")} - ${dayjs(shift.endTime).format("HH:mm")}`
       };
+    });
+    schedulerData.setEvents(events);
+
+    setViewModel(schedulerData);
+  }, [employees, shifts, loadingEmployees, loadingShifts]);
+
+  // --- Mutations ---
+  
+  const createShiftMutation = useMutation({
+    mutationFn: async (payload: any) => {
+      const res = await apiRequest("POST", "/api/shifts", { ...payload, status: "scheduled" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["shifts"] })
+  });
+
+  const updateShiftMutation = useMutation({
+    mutationFn: async (payload: any) => {
+      const res = await apiRequest("PUT", `/api/shifts/${payload.id}`, payload);
+      if (!res.ok) throw new Error("Failed");
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["shifts"] })
+  });
+
+  const deleteShiftMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("DELETE", `/api/shifts/${id}`);
+      if (!res.ok) throw new Error("Failed");
+    },
+    onSuccess: () => {
+      setShowEditDialog(false);
+      queryClient.invalidateQueries({ queryKey: ["shifts"] });
+    }
+  });
+
+  // --- Callbacks ---
+
+  const prevClick = (schedulerData: SchedulerData) => {
+    schedulerData.prev();
+    schedulerData.setEvents(schedulerData.events); // Refresh events (if we had server pagination, we'd fetch here)
+    setViewModel(new SchedulerData(schedulerData)); // immutable update
+  };
+
+  const nextClick = (schedulerData: SchedulerData) => {
+    schedulerData.next();
+    schedulerData.setEvents(schedulerData.events);
+    setViewModel(new SchedulerData(schedulerData));
+  };
+
+  const onViewChange = (schedulerData: SchedulerData, view: any) => {
+    schedulerData.setViewType(view.viewType, view.showAgenda, view.isEventPerspective);
+    schedulerData.setEvents(schedulerData.events);
+    setViewModel(new SchedulerData(schedulerData));
+  };
+
+  const onSelectDate = (schedulerData: SchedulerData, date: string) => {
+    schedulerData.setDate(date);
+    schedulerData.setEvents(schedulerData.events);
+    setViewModel(new SchedulerData(schedulerData));
+  };
+
+  const eventClicked = (schedulerData: SchedulerData, event: any) => {
+    setEditingEvent(event);
+    setFormData({
+      resourceId: event.resourceId,
+      startTime: dayjs(event.start).format("YYYY-MM-DDTHH:mm"),
+      endTime: dayjs(event.end).format("YYYY-MM-DDTHH:mm"),
+    });
+    setShowEditDialog(true);
+  };
+
+  const newEvent = (schedulerData: SchedulerData, slotId: string, slotName: string, start: string, end: string, type: string, item: any) => {
+    // Open dialog for creation
+    setEditingEvent(null); // New event mode
+    setFormData({
+      resourceId: slotId,
+      startTime: dayjs(start).format("YYYY-MM-DDTHH:mm"),
+      endTime: dayjs(end).format("YYYY-MM-DDTHH:mm"),
+    });
+    setShowEditDialog(true);
+  };
+
+  const moveEvent = async (schedulerData: SchedulerData, event: any, slotId: string, slotName: string, start: string, end: string) => {
+    // Optimistic update
+    schedulerData.moveEvent(event, slotId, slotName, start, end);
+    setViewModel(new SchedulerData(schedulerData));
+
+    // API Call
+    try {
+      await updateShiftMutation.mutateAsync({
+        id: event.id,
+        userId: slotId,
+        startTime: dayjs(start).toISOString(),
+        endTime: dayjs(end).toISOString()
+      });
+    } catch (e) {
+      console.error(e);
+      setSnackbarMsg("Failed to move shift");
+      setShowSnackbar(true);
+      // Revert if needed? React query invalidation will fix eventually
+    }
+  };
+
+  const updateEventStart = async (schedulerData: SchedulerData, event: any, newStart: string) => {
+    schedulerData.updateEventStart(event, newStart);
+    setViewModel(new SchedulerData(schedulerData));
+    await updateShiftMutation.mutateAsync({
+      id: event.id,
+      startTime: dayjs(newStart).toISOString(),
+      endTime: dayjs(event.end).toISOString() // keep existing end
     });
   };
 
-  // 3. Mutations
+  const updateEventEnd = async (schedulerData: SchedulerData, event: any, newEnd: string) => {
+    schedulerData.updateEventEnd(event, newEnd);
+    setViewModel(new SchedulerData(schedulerData));
+    await updateShiftMutation.mutateAsync({
+      id: event.id,
+      startTime: dayjs(event.start).toISOString(), // keep existing start
+      endTime: dayjs(newEnd).toISOString()
+    });
+  };
 
-  // Create / Update
-  const handleConfirm = async (event: ProcessedEvent, action: "create" | "edit"): Promise<ProcessedEvent> => {
+  const conflictOccurred = (schedulerData: SchedulerData, action: string, event: any) => {
+    setSnackbarMsg(`Conflict detected! You cannot place overlapping shifts.`);
+    setShowSnackbar(true);
+  };
+
+  // --- Dialog Save ---
+  const handleDialogSave = async () => {
     const payload = {
-      userId: event.assignee, // Ensure our editor sets this
-      startTime: event.start.toISOString(),
-      endTime: event.end.toISOString(),
-      status: "scheduled",
+      userId: formData.resourceId,
+      startTime: dayjs(formData.startTime).toISOString(),
+      endTime: dayjs(formData.endTime).toISOString()
     };
 
-    let res;
-    if (action === "edit") {
-      res = await apiRequest("PUT", `/api/shifts/${event.event_id}`, payload);
+    if (editingEvent) {
+      await updateShiftMutation.mutateAsync({ id: editingEvent.id, ...payload });
     } else {
-      res = await apiRequest("POST", "/api/shifts", payload);
+      await createShiftMutation.mutateAsync(payload);
     }
-
-    if (!res.ok) throw new Error("Failed to save shift");
-    
-    const saved: Shift = await res.json();
-    const sStart = new Date(saved.startTime);
-    const sEnd = new Date(saved.endTime);
-    // Return processed event to update UI immediately (or rely on refetch)
-    return {
-      event_id: saved.id,
-      title: `${format(sStart, "h:mm a")} - ${format(sEnd, "h:mm a")}`,
-      start: sStart,
-      end: sEnd,
-      assignee: saved.userId,
-      color: sStart.getHours() < 12 ? "#60e81a" : "#f1e920",
-      textColor: "#1a1a1a",
-    };
+    setShowEditDialog(false);
   };
 
-  // Delete
-  const handleDelete = async (deletedId: string): Promise<string> => {
-    const res = await apiRequest("DELETE", `/api/shifts/${deletedId}`);
-    if (!res.ok) throw new Error("Failed to delete");
-    return deletedId;
-  };
+  // --- UI Templates ---
 
-  // Drag & Drop
-  const handleEventDrop = async (
-    droppedOn: Date,
-    updatedEvent: ProcessedEvent,
-    originalEvent: ProcessedEvent
-  ): Promise<ProcessedEvent | void> => {
-    // Check if changed
-    if (
-      updatedEvent.start.getTime() === originalEvent.start.getTime() &&
-      updatedEvent.end.getTime() === originalEvent.end.getTime() &&
-      updatedEvent.assignee === originalEvent.assignee // Assignee change support
-    ) {
-      return updatedEvent;
-    }
-
-    // Call API
-    const payload = {
-      startTime: updatedEvent.start.toISOString(),
-      endTime: updatedEvent.end.toISOString(),
-      userId: updatedEvent.assignee, // Support re-assigning
-    };
-
-    const res = await apiRequest("PUT", `/api/shifts/${updatedEvent.event_id}`, payload);
-    if (!res.ok) {
-       // revert? The library might handle error defaults. 
-       throw new Error("Failed to move");
-    }
-    
-    // We can invalidate queries to be sure, but returning the event updates local state
-    queryClient.invalidateQueries({ queryKey: ["shifts"] });
-    return updatedEvent;
-  };
-
-  // 4. Custom Components
-
-  // Resource Header (Avatar + Name)
-  const resourceHeader = (resource: { resource: { title: string; subtitle: string; admin_id: string } }) => {
+  // Custom Resource (Employee Row)
+  const slotItemTemplateResolver = (schedulerData: any, slot: any, slotClickedFunc: any, width: any, clsName: any) => {
+    const emp = employees.find(e => e.id === slot.slotId);
     return (
-      <Stack direction="row" alignItems="center" spacing={2} sx={{ p: 1 }}>
-        <Avatar sx={{ bgcolor: getAvatarColor(resource.resource.subtitle) }}>
-          {resource.resource.title.charAt(0)}
-        </Avatar>
-        <Box>
-          <Typography variant="body2" fontWeight="bold" noWrap>
-            {resource.resource.title}
-          </Typography>
-          <Typography variant="caption" color="text.secondary" noWrap>
-            {resource.resource.subtitle}
-          </Typography>
-        </Box>
-      </Stack>
+      <div className={clsName} style={{ width, height: '100%' }} title={slot.slotName}>
+         <Box sx={{ display: 'flex', alignItems: 'center', p: 1, gap: 1.5, height: '100%' }}>
+           <Avatar sx={{ bgcolor: (emp?.role||'').includes('manager') ? '#e25dd2' : '#60e81a', width: 32, height: 32 }}>
+             {slot.slotName.charAt(0)}
+           </Avatar>
+           <Box>
+             <Typography variant="subtitle2" noWrap sx={{ fontWeight: 'bold', fontSize: '0.85rem' }}>{slot.slotName}</Typography>
+             <Typography variant="caption" display="block" color="text.secondary" noWrap sx={{ fontSize: '0.7rem' }}>
+               {emp?.role || "Staff"}
+             </Typography>
+           </Box>
+         </Box>
+      </div>
     );
   };
 
-  // Helper for colors
-  const getAvatarColor = (role: string) => {
-    if (!role) return "#999";
-    const r = role.toLowerCase();
-    if (r.includes("manager")) return "#9c27b0";
-    if (r.includes("cashier")) return "#60e81a";
-    return "#2196f3";
-  };
-
-  // Custom Editor
-  // The library passes { state, close, onConfirm } to the custom editor component.
-  // We need to implement a fully functional Dialog.
-  const CustomEditor = ({ scheduler }: { scheduler: any }) => {
-    const event = scheduler.edited;
-    
-    // Form state
-    const [userId, setUserId] = React.useState(event?.assignee || (scheduler.state.resource?.admin_id) || "");
-    const [start, setStart] = React.useState(event?.start || scheduler.state.start.value);
-    const [end, setEnd] = React.useState(event?.end || scheduler.state.end.value);
-    const [error, setError] = React.useState("");
-
-    const handleSave = async () => {
-        try {
-            scheduler.loading(true);
-            const newEvent = {
-                event_id: event?.event_id,
-                title: "Shift", // Title is auto-generated in display, but we need structure
-                start,
-                end,
-                assignee: userId
-            };
-            
-            await scheduler.onConfirm(newEvent, event ? "edit" : "create");
-            scheduler.close();
-        } catch (e) {
-            console.error(e);
-            setError("Failed to save shift");
-        } finally {
-            scheduler.loading(false);
-        }
-    };
-
-    // Calculate duration for convenience?
-    // For simplicity, just use native datetime-local inputs or text
-    
+  // Custom Event Block
+  const eventItemTemplateResolver = (schedulerData: any, event: any, bgColor: any, isStart: any, isEnd: any, mustAddCssClass: any, mustBeHeight: any, agendaMaxEventWidth: any) => {
     return (
-      <Box sx={{ p: 2, minWidth: 300 }}>
-        <DialogTitle>{event ? "Edit Shift" : "Add Shift"}</DialogTitle>
-        <DialogContent>
-            <Stack spacing={2} sx={{ mt: 1 }}>
-                <Autocomplete
-                    options={resources}
-                    getOptionLabel={(option) => option.title}
-                    value={resources.find(r => r.admin_id === userId) || null}
-                    onChange={(_, val) => setUserId(val?.admin_id || "")}
-                    renderInput={(params) => <TextField {...params} label="Employee" />}
-                    disableClearable
-                />
-                <TextField
-                   label="Start Time"
-                   type="datetime-local"
-                   fullWidth
-                   value={format(start, "yyyy-MM-dd'T'HH:mm")}
-                   onChange={(e) => setStart(new Date(e.target.value))}
-                   InputLabelProps={{ shrink: true }}
-                />
-                <TextField
-                   label="End Time"
-                   type="datetime-local"
-                   fullWidth
-                   value={format(end, "yyyy-MM-dd'T'HH:mm")}
-                   onChange={(e) => setEnd(new Date(e.target.value))}
-                   InputLabelProps={{ shrink: true }}
-                />
-                {error && <Typography color="error">{error}</Typography>}
-            </Stack>
-        </DialogContent>
-        <DialogActions>
-            <Button onClick={scheduler.close}>Cancel</Button>
-            <Button variant="contained" onClick={handleSave}>Confirm</Button>
-        </DialogActions>
-      </Box>
+        <div key={event.id} style={{
+            background: event.bgColor,
+            height: '100%',
+            width: '100%',
+            borderRadius: 4,
+            padding: '2px 4px',
+            color: '#1a1a1a', 
+            border: '1px solid rgba(0,0,0,0.1)',
+            overflow: 'hidden',
+            fontSize: '11px',
+            fontWeight: 600,
+            boxSizing: 'border-box',
+            display: 'flex',
+            alignItems: 'center'
+        }}>
+            {event.customTitle}
+        </div>
     );
   };
 
-
-  if (loadingEmployees) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" height="calc(100vh - 100px)">
-        <CircularProgress />
-      </Box>
-    );
+  if (loadingEmployees || loadingShifts || !viewModel) {
+     return <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}><CircularProgress /></Box>;
   }
 
   return (
-    <Box sx={{ height: "calc(100vh - 100px)", p: 2 }}>
-      <Scheduler
-        ref={calendarRef}
-        view="week"
-        locale={enUS}
-        
-        // Resource Configuration
-        resources={resources}
-        resourceFields={{
-          idField: "admin_id",
-          textField: "title",
-          subTextField: "subtitle",
-          avatarField: "avatar",
-          colorField: "color",
-        }}
-        resourceViewMode="default" // Rows
-        
-        // Data Callbacks
-        getRemoteEvents={fetchRemote}
-        onConfirm={handleConfirm}
-        onDelete={handleDelete}
-        onEventDrop={handleEventDrop as any} 
-        
-        // View Props
-        week={{
-          weekDays: [0, 1, 2, 3, 4, 5, 6],
-          weekStartOn: 1,
-          startHour: 6,
-          endHour: 23,
-          step: 60,
-          navigation: true,
-        }}
-        day={{
-          startHour: 6,
-          endHour: 23,
-          step: 60,
-          navigation: true,
-        }}
-        
-        // Customizations
-        resourceHeaderComponent={resourceHeader}
-        // eventRenderer can be used for custom blocks, default is okay but we can enhance
-        customEditor={(scheduler) => <CustomEditor scheduler={scheduler} />}
-        
-        // Styling
-        hourFormat="12"
-      />
+    <Box sx={{ 
+      height: "calc(100vh - 100px)", 
+      p: 2, 
+      "& .scheduler-bg": { fontFamily: "inherit" }, // Reset fonts to MUI defaults 
+      "& table": { borderCollapse: "separate", borderSpacing: 0 } // Fix potential table style conflicts
+    }}>
+      <DndProvider backend={HTML5Backend}>
+        <Scheduler
+          schedulerData={viewModel}
+          prevClick={prevClick}
+          nextClick={nextClick}
+          onSelectDate={onSelectDate}
+          onViewChange={onViewChange}
+          eventItemClick={eventClicked}
+          viewEventClick={eventClicked}
+          viewEventText="Edit"
+          viewEvent2Text="Delete"
+          viewEvent2Click={() => {}}
+          updateEventStart={updateEventStart}
+          updateEventEnd={updateEventEnd}
+          moveEvent={moveEvent}
+          newEvent={newEvent}
+          conflictOccurred={conflictOccurred}
+          slotItemTemplateResolver={slotItemTemplateResolver}
+          eventItemTemplateResolver={eventItemTemplateResolver}
+        />
+      </DndProvider>
+
+      {/* Custom MUI Editor Dialog */}
+      <Dialog open={showEditDialog} onClose={() => setShowEditDialog(false)} fullWidth maxWidth="xs">
+        <DialogTitle>{editingEvent ? "Edit Shift" : "New Shift"}</DialogTitle>
+        <DialogContent>
+           <Stack spacing={2} sx={{ mt: 1 }}>
+              <Autocomplete
+                 options={employees}
+                 getOptionLabel={(e) => `${e.firstName} ${e.lastName}`}
+                 value={employees.find(e => e.id === formData.resourceId) || null}
+                 onChange={(_, val) => setFormData({...formData, resourceId: val?.id || ""})}
+                 renderInput={(params) => <TextField {...params} label="Employee" />}
+                 disableClearable
+              />
+              <TextField
+                 label="Start Time"
+                 type="datetime-local"
+                 fullWidth
+                 value={formData.startTime}
+                 onChange={(e) => setFormData({...formData, startTime: e.target.value})}
+                 InputLabelProps={{ shrink: true }}
+              />
+              <TextField
+                 label="End Time"
+                 type="datetime-local"
+                 fullWidth
+                 value={formData.endTime}
+                 onChange={(e) => setFormData({...formData, endTime: e.target.value})}
+                 InputLabelProps={{ shrink: true }}
+              />
+           </Stack>
+        </DialogContent>
+        <DialogActions>
+           {editingEvent && (
+              <Button onClick={() => deleteShiftMutation.mutate(editingEvent.id)} color="error">
+                 Delete
+              </Button>
+           )}
+           <Button onClick={() => setShowEditDialog(false)}>Cancel</Button>
+           <Button onClick={handleDialogSave} variant="contained">Save</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar 
+        open={showSnackbar} 
+        autoHideDuration={4000} 
+        onClose={() => setShowSnackbar(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setShowSnackbar(false)} severity="warning" sx={{ width: '100%' }}>
+          {snackbarMsg}
+        </Alert>
+      </Snackbar>
     </Box>
   );
-}
+};
+
+export default SchedulerComponent;

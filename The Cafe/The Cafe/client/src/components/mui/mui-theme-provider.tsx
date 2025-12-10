@@ -113,22 +113,38 @@ export function MuiThemeProvider({ children }: MuiThemeProviderProps) {
         ] as any,
         components: {
           MuiCssBaseline: {
-            styleOverrides: {
-              body: {
-                scrollbarWidth: "thin",
-                "&::-webkit-scrollbar": {
-                  width: "8px",
-                  height: "8px",
-                },
-                "&::-webkit-scrollbar-track": {
-                  background: "transparent",
-                },
-                "&::-webkit-scrollbar-thumb": {
-                  backgroundColor: isDark ? "#404040" : "#d1d5db",
-                  borderRadius: "4px",
-                },
-              },
-            },
+            styleOverrides: `
+              body {
+                scrollbar-width: thin;
+              }
+              body::-webkit-scrollbar {
+                width: 8px;
+                height: 8px;
+              }
+              body::-webkit-scrollbar-track {
+                background: transparent;
+              }
+              body::-webkit-scrollbar-thumb {
+                background-color: ${isDark ? "#404040" : "#d1d5db"};
+                border-radius: 4px;
+              }
+              
+              /* Remove ALL borders from standard HTML tables */
+              table, th, td {
+                border: none !important;
+                border-color: transparent !important;
+              }
+              table {
+                border-collapse: collapse;
+              }
+              
+              /* Target all common MUI classes for a clean slate */
+              .MuiPaper-root,
+              .MuiCard-root,
+              .MuiDrawer-paper {
+                border: none !important;
+              }
+            `,
           },
           MuiButton: {
             styleOverrides: {
@@ -161,7 +177,7 @@ export function MuiThemeProvider({ children }: MuiThemeProviderProps) {
                 boxShadow: isDark
                   ? "0 1px 3px 0 rgb(0 0 0 / 0.3)"
                   : "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)",
-                border: `1px solid ${isDark ? "#262626" : "#e5e5e5"}`,
+                border: "none",
                 backgroundImage: "none",
               },
             },
@@ -215,14 +231,37 @@ export function MuiThemeProvider({ children }: MuiThemeProviderProps) {
               },
             },
           },
+          MuiTable: {
+            styleOverrides: {
+              root: {
+                border: "none",
+              },
+            },
+          },
           MuiTableCell: {
             styleOverrides: {
               root: {
-                borderBottom: `1px solid ${isDark ? "#262626" : "#e5e5e5"}`,
+                borderBottom: "none !important",
               },
               head: {
                 fontWeight: 600,
                 backgroundColor: isDark ? "#171717" : "#f5f5f5",
+              },
+            },
+          },
+          MuiDataGrid: {
+            styleOverrides: {
+              root: {
+                border: "none",
+                "& .MuiDataGrid-row": {
+                  border: "none",
+                },
+              },
+              cell: {
+                border: "none !important",
+              },
+              columnHeader: {
+                border: "none !important",
               },
             },
           },

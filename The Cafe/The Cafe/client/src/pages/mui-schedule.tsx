@@ -335,7 +335,7 @@ export default function SchedulePage() {
       {/* Main Scheduler Area - Always rendered to prevent removeChild errors, hidden when loading */}
       <div style={{ flexGrow: 1, position: "relative", border: "1px solid #e0e0e0", borderRadius: 8, overflow: "hidden", display: isLoading ? 'none' : 'block' }}>
         <SchedulerErrorBoundary>
-          <StableScheduler 
+          <Scheduler 
             {...config} 
             ref={schedulerRef}
           />

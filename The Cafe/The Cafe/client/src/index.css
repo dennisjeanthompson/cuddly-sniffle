@@ -1561,3 +1561,130 @@ td::after,
   border-bottom: none !important;
 }
 
+
+/* ===========================
+   FINAL: FORCE-REMOVE ALL VISIBLE BORDERS/LINE ARTIFACTS
+   Must be loaded AFTER FullCalendar/Tailwind vendor CSS
+   =========================== */
+
+:root {
+  /* ensure FullCalendar vars are transparent */
+  --fc-border-color: transparent !important;
+  --fc-neutral-bg-color: transparent !important;
+}
+
+/* Nuke remaining borders/backgrounds on key elements */
+.calendar-modern,
+.calendar-modern *,
+.card-glass,
+.card-glass *,
+.glass,
+.glass *,
+.metric-card,
+.metric-card *,
+.stat-card,
+.stat-card *,
+.mobile-card,
+.mobile-card *,
+.mobile-list,
+.mobile-list *,
+.table-row,
+.table-row * {
+  border: none !important;
+  border-style: none !important;
+  border-width: 0 !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* Remove Tailwind-applied border utilities */
+.calendar-cell,
+.calendar-cell *,
+.calendar-header,
+.calendar-header * {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Aggressive FullCalendar overrides (timegrid, daygrid, headers, scrollgrid) */
+.fc,
+.fc *,
+.fc table,
+.fc thead,
+.fc tbody,
+.fc tr,
+.fc th,
+.fc td,
+.fc .fc-timegrid-slot,
+.fc .fc-timegrid-slot-lane,
+.fc .fc-col,
+.fc .fc-timegrid-col,
+.fc .fc-scrollgrid-section,
+.fc .fc-scrollgrid-section table,
+.fc .fc-scrollgrid-section > td,
+.fc .fc-col-header-cell,
+.fc .fc-timegrid-axis,
+.fc .fc-timegrid-divider,
+.fc .fc-daygrid-day,
+.fc .fc-daygrid-day-frame,
+.fc .fc-day-today,
+.fc .fc-scrollgrid-sync-table {
+  border: none !important;
+  border-top: none !important;
+  border-bottom: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* Hide pseudo-elements that sometimes draw lines */
+.fc *::before,
+.fc *::after,
+.card-glass::before,
+.card-glass::after,
+.glass::before,
+.glass::after {
+  display: none !important;
+  content: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+/* Remove subtle border classes still created via Tailwind utilities */
+.border, .border-t, .border-b, .border-r, .border-l, .divide-y > *, .divide-x > * {
+  border: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Ensure DataGrid separators hidden (defensive) */
+.MuiDataGrid-root,
+.MuiDataGrid-root * {
+  border: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+.MuiDataGrid-columnSeparator,
+.MuiDataGrid-iconSeparator { display: none !important; }
+
+/* Finally, neutralize glass borders still present */
+.glass, .glass-card {
+  border: none !important;
+  background: rgba(0,0,0,0) !important;
+  box-shadow: none !important;
+}
+
+/* Remove borders from stat variant cards */
+.stat-violet,
+.stat-blue,
+.stat-emerald,
+.stat-amber {
+  border: none !important;
+  border-color: transparent !important;
+}
+

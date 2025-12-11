@@ -10,7 +10,6 @@ import {
   CircularProgress,
   Snackbar,
   Alert,
-  Drawer,
   IconButton,
   Avatar,
   Chip,
@@ -644,25 +643,21 @@ const EnhancedScheduler = () => {
         </Box>
       )}
 
-      {/* Employee Roster Drawer */}
-      <Drawer
-        anchor="left"
-        open={rosterOpen}
-        onClose={() => setRosterOpen(false)}
-        variant="persistent"
+      {/* Employee Roster Sidebar - Inline Collapsible (2025 Best Practice) */}
+      <Box
         className="no-print"
         sx={{
           width: rosterOpen ? 320 : 0,
+          minWidth: rosterOpen ? 320 : 0,
           flexShrink: 0,
-          '& .MuiDrawer-paper': {
-            width: 320,
-            boxSizing: 'border-box',
-            borderRight: '1px solid',
-            borderColor: 'divider',
-            bgcolor: 'background.paper',
-            pt: '64px', // below header
-            height: 'calc(100vh - 64px)',
-          },
+          overflow: 'hidden',
+          transition: 'all 225ms cubic-bezier(0.4, 0, 0.2, 1)',
+          borderRight: rosterOpen ? 1 : 0,
+          borderColor: 'divider',
+          bgcolor: 'background.paper',
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
         <Box sx={{ p: 2 }}>
@@ -774,7 +769,7 @@ const EnhancedScheduler = () => {
             })}
           </Box>
         </Box>
-      </Drawer>
+      </Box>
 
       {/* Main Calendar Area */}
       <Box
@@ -782,9 +777,9 @@ const EnhancedScheduler = () => {
         sx={{
           flexGrow: 1,
           p: 3,
-          transition: 'margin-left 225ms cubic-bezier(0.4, 0, 0.2, 1), width 225ms cubic-bezier(0.4, 0, 0.2, 1)',
-          marginLeft: rosterOpen ? '320px' : '0px',
-          width: rosterOpen ? 'calc(100% - 320px)' : '100%',
+          overflow: 'auto',
+          minWidth: 0, // Important for flex children to prevent overflow
+          transition: 'all 225ms cubic-bezier(0.4, 0, 0.2, 1)',
         }}
       >
         {/* Toolbar */}

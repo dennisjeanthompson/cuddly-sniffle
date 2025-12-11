@@ -56,7 +56,7 @@ export function MuiThemeProvider({ children }: MuiThemeProviderProps) {
             primary: isDark ? "#fafafa" : "#0a0a0a",
             secondary: isDark ? "#a1a1aa" : "#71717a",
           },
-          divider: "transparent", // No visible dividers
+          divider: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.05)", // Very subtle - MUI needs valid color for alpha()
         },
         typography: {
           fontFamily: '"Inter", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',

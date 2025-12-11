@@ -1751,5 +1751,76 @@ td {
   box-shadow: none !important;
 }
 
-/* End of CSS file - cleaned up react-big-schedule remnants */
+
+/* ===================================================================
+   🔥 FINAL REACT-BIG-CALENDAR GRID LINE KILLER - 2025
+   Targets all .rbc-* classes - MUST BE LAST IN FILE
+   =================================================================== */
+.rbc-calendar *,
+.rbc-calendar,
+.rbc-month-view,
+.rbc-time-view,
+.rbc-day-bg,
+.rbc-time-slot,
+.rbc-time-header,
+.rbc-time-content,
+.rbc-time-header-cell,
+.rbc-time-header-content,
+.rbc-day-slot,
+.rbc-time-column,
+.rbc-row,
+.rbc-row-bg,
+.rbc-row-content,
+.rbc-header,
+.rbc-date-cell,
+.rbc-off-range-bg,
+.rbc-today,
+.rbc-event,
+.rbc-event-content,
+.rbc-current-time-indicator {
+  border: none !important;
+  border-top: none !important;
+  border-bottom: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* Remove vertical lines between days */
+.rbc-day-slot .rbc-time-slot {
+  border-top: none !important;
+  border-bottom: none !important;
+}
+
+/* Remove horizontal lines */
+.rbc-time-view .rbc-time-slot {
+  border-top: none !important;
+}
+
+/* Remove header borders */
+.rbc-header {
+  border-bottom: none !important;
+}
+
+/* Remove today highlight border */
+.rbc-today {
+  background: transparent !important;
+}
+
+/* Hide any pseudo-elements */
+.rbc-calendar *::before,
+.rbc-calendar *::after {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  content: none !important;
+}
+
+/* Force no background lines */
+.rbc-off-range-bg,
+.rbc-row-bg {
+  background: transparent !important;
+}
 

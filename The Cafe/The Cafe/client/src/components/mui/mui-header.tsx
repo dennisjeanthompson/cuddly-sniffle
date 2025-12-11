@@ -136,7 +136,7 @@ export default function MuiHeader() {
       sx={{
         bgcolor: alpha(theme.palette.background.paper, 0.8),
         backdropFilter: "blur(20px)",
-        borderBottom: `1px solid ${alpha(theme.palette.divider, 0.5)}`,
+        borderBottom: `1px solid rgba(255, 255, 255, 0.08)`,
         color: "text.primary",
       }}
     >

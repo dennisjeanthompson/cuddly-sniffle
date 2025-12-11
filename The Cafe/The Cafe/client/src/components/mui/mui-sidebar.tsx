@@ -236,8 +236,8 @@ export default function MuiSidebar() {
         "& .MuiDrawer-paper": {
           width: isCollapsed ? COLLAPSED_WIDTH : DRAWER_WIDTH,
           boxSizing: "border-box",
-          borderRight: `1px solid ${alpha(theme.palette.divider, 0.5)}`,
-          background: alpha(theme.palette.background.paper, 0.95),
+          borderRight: `1px solid rgba(255, 255, 255, 0.08)`,
+          background: `rgba(0, 0, 0, 0.4)`,
           backdropFilter: "blur(20px)",
           transition: "width 0.3s ease-in-out",
           overflowX: "hidden",
@@ -274,7 +274,7 @@ export default function MuiSidebar() {
       <Box
         sx={{
           p: 2.5,
-          borderBottom: `1px solid ${alpha(theme.palette.divider, 0.5)}`,
+          borderBottom: `1px solid rgba(255, 255, 255, 0.08)`,
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
@@ -335,7 +335,7 @@ export default function MuiSidebar() {
             width: 4,
           },
           "&::-webkit-scrollbar-thumb": {
-            backgroundColor: alpha(theme.palette.text.primary, 0.1),
+            backgroundColor: `rgba(255, 255, 255, 0.05)`,
             borderRadius: 2,
           },
         }}
@@ -349,8 +349,8 @@ export default function MuiSidebar() {
       <Box
         sx={{
           p: 2,
-          borderTop: `1px solid ${alpha(theme.palette.divider, 0.5)}`,
-          bgcolor: alpha(theme.palette.action.hover, 0.03),
+          borderTop: `1px solid rgba(255, 255, 255, 0.08)`,
+          bgcolor: `rgba(255, 255, 255, 0.02)`,
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>

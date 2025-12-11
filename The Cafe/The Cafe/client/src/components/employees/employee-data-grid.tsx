@@ -121,26 +121,26 @@ export function EmployeeDataGrid({
     [darkMode]
   );
 
-  // DataGrid custom styles
+  // DataGrid custom styles - ALL BORDERS REMOVED
   const dataGridSx = useMemo(() => ({
     border: 'none',
     borderRadius: '16px',
     '& .MuiDataGrid-cell': {
-      borderBottom: darkMode ? '1px solid #262626' : '1px solid #e5e5e5',
+      border: 'none', // No cell borders
     },
     '& .MuiDataGrid-columnHeaders': {
       backgroundColor: darkMode ? '#171717' : '#f5f5f5',
-      borderBottom: darkMode ? '1px solid #262626' : '1px solid #e5e5e5',
+      border: 'none', // No header borders
     },
     '& .MuiDataGrid-footerContainer': {
       backgroundColor: darkMode ? '#171717' : '#f5f5f5',
-      borderTop: darkMode ? '1px solid #262626' : '1px solid #e5e5e5',
+      border: 'none', // No footer borders
     },
     '& .MuiDataGrid-toolbarContainer': {
       padding: '12px 16px',
       gap: '8px',
       backgroundColor: darkMode ? '#171717' : '#f5f5f5',
-      borderBottom: darkMode ? '1px solid #262626' : '1px solid #e5e5e5',
+      border: 'none', // No toolbar borders
     },
     '& .MuiDataGrid-row:hover': {
       backgroundColor: darkMode ? '#1f1f1f' : '#fafafa',
@@ -156,6 +156,12 @@ export function EmployeeDataGrid({
     },
     '& .MuiDataGrid-columnHeader:focus': {
       outline: 'none',
+    },
+    '& .MuiDataGrid-columnSeparator': {
+      display: 'none', // Hide column separators
+    },
+    '& .MuiDataGrid-withBorderColor': {
+      borderColor: 'transparent', // Make any remaining borders transparent
     },
   }), [darkMode]);
 

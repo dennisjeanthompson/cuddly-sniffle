@@ -42,7 +42,7 @@
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
   
-  --border: 217 33% 15%;
+  --border: 0 0% 100% / 0; /* Transparent - no visible borders */
   --input: 217 33% 12%;
   --ring: 160 84% 39%;
   
@@ -60,14 +60,14 @@
   --sidebar-primary-foreground: 0 0% 100%;
   --sidebar-accent: 217 33% 14%;
   --sidebar-accent-foreground: 210 40% 98%;
-  --sidebar-border: 217 33% 12%;
+  --sidebar-border: 0 0% 100% / 0; /* Transparent - no visible borders */
   --sidebar-ring: 160 84% 39%;
   
   --radius: 0.75rem;
   
   /* Premium glassmorphism effects */
   --glass-bg: rgba(30, 41, 59, 0.7);
-  --glass-border: rgba(71, 85, 105, 0.3);
+  --glass-border: transparent; /* No visible borders */
   --glow-emerald: 0 0 40px rgba(16, 185, 129, 0.15);
   --glow-indigo: 0 0 40px rgba(99, 102, 241, 0.15);
 }
@@ -100,7 +100,7 @@
   
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
-  --border: 40 15% 88%;
+  --border: 0 0% 100% / 0; /* Transparent - no visible borders */
   --input: 40 15% 88%;
   --ring: 160 84% 35%;
   
@@ -110,11 +110,11 @@
   --sidebar-primary-foreground: 0 0% 100%;
   --sidebar-accent: 40 20% 94%;
   --sidebar-accent-foreground: 222 47% 11%;
-  --sidebar-border: 40 15% 88%;
+  --sidebar-border: 0 0% 100% / 0; /* Transparent - no visible borders */
   --sidebar-ring: 160 84% 35%;
   
   --glass-bg: rgba(255, 255, 255, 0.8);
-  --glass-border: rgba(226, 232, 240, 0.8);
+  --glass-border: transparent; /* No visible borders */
   --glow-emerald: 0 0 40px rgba(16, 185, 129, 0.1);
   --glow-indigo: 0 0 40px rgba(99, 102, 241, 0.1);
 }

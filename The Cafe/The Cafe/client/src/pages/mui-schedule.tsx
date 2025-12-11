@@ -169,8 +169,10 @@ const EnhancedScheduler = () => {
     },
   });
 
-  const shifts = shiftsData?.shifts || [];
-  const employees = (employeesData?.employees || []).filter(e => e.isActive !== false);
+  // Robustly handle API response format (array or object)
+  const shifts = Array.isArray(shiftsData) ? shiftsData : (shiftsData?.shifts || []);
+  const rawEmployees = Array.isArray(employeesData) ? employeesData : (employeesData?.employees || []);
+  const employees = rawEmployees.filter(e => e.isActive !== false);
 
   // Feature 2: Overlap Detection
   const checkOverlap = useCallback((employeeId: string, startTime: string, endTime: string, excludeShiftId?: string): boolean => {
@@ -467,7 +469,8 @@ const EnhancedScheduler = () => {
     
     if (start) {
       const startDate = new Date(start);
-      const endDate = new Date(startDate.getTime() + 4 * 60 * 60 * 1000);
+      // Feature: Default to 8-hour shift instead of 4-hour
+      const endDate = new Date(startDate.getTime() + 8 * 60 * 60 * 1000);
       
       setNewShiftData({
         employeeId: employee.id,
@@ -489,8 +492,11 @@ const EnhancedScheduler = () => {
           const emp = empData ? JSON.parse(empData) : null;
           return {
             title: emp ? `${emp.firstName} ${emp.lastName}` : 'New Shift',
-            duration: '04:00',
-            create: false,
+            duration: '08:00', // Feature: 8-hour default
+            create: false, // We stick to false to handle 'drop' manually and show modal
+            backgroundColor: '#10B981', // emerald green while dragging
+            borderColor: '#10B981',
+            textColor: '#ffffff',
           };
         },
       });
@@ -660,63 +666,71 @@ const EnhancedScheduler = () => {
           <Divider sx={{ mb: 2 }} />
           
           <Box ref={rosterRef} sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {employees.length === 0 && (
+              <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                No employees found.
+              </Typography>
+            )}
             {employees.map((employee, index) => {
               const colors = EMPLOYEE_COLORS[index % EMPLOYEE_COLORS.length];
               return (
-                <Box
-                  key={employee.id}
-                  className="draggable-employee"
-                  data-employee={JSON.stringify(employee)}
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 2,
-                    p: 1.5,
-                    borderRadius: 2,
-                    bgcolor: 'background.paper',
-                    cursor: isPublished ? 'grab' : 'not-allowed',
-                    opacity: isPublished ? 1 : 0.6,
-                    transition: 'all 0.2s',
-                    '&:hover': isPublished ? {
-                      bgcolor: 'action.hover',
-                      transform: 'translateX(4px)',
-                    } : {},
-                    '&:active': {
-                      cursor: isPublished ? 'grabbing' : 'not-allowed',
-                    },
-                  }}
-                >
-                  <Avatar
+                <Tooltip key={employee.id} title="Drag me to the calendar to create a shift" arrow placement="right">
+                  <Box
+                    className="draggable-employee"
+                    data-employee={JSON.stringify(employee)}
                     sx={{
-                      width: 36,
-                      height: 36,
-                      bgcolor: colors.bg,
-                      color: colors.text,
-                      fontSize: '0.875rem',
-                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 2,
+                      p: 1.5,
+                      borderRadius: 2,
+                      bgcolor: 'background.paper',
+                      cursor: isPublished ? 'grab' : 'not-allowed',
+                      opacity: isPublished ? 1 : 0.6,
+                      transition: 'all 0.2s',
+                      border: '1px solid transparent', // Placeholder for hover effect
+                      '&:hover': isPublished ? {
+                        bgcolor: 'action.hover',
+                        transform: 'translateX(4px)',
+                        borderColor: 'primary.main', // Visual feedback
+                      } : {},
+                      '&:active': {
+                        cursor: isPublished ? 'grabbing' : 'not-allowed',
+                      },
                     }}
                   >
-                    {employee.firstName[0]}{employee.lastName[0]}
-                  </Avatar>
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography variant="body2" fontWeight={600} noWrap>
-                      {employee.firstName} {employee.lastName}
-                    </Typography>
-                    {employee.role && (
-                      <Typography variant="caption" color="text.secondary">
-                        {employee.role}
+                    <Avatar
+                      sx={{
+                        width: 36,
+                        height: 36,
+                        bgcolor: colors.bg,
+                        color: colors.text,
+                        fontSize: '0.875rem',
+                        fontWeight: 600,
+                      }}
+                    >
+                      {employee.firstName[0]}{employee.lastName[0]}
+                    </Avatar>
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography variant="body2" fontWeight={600} noWrap>
+                        {employee.firstName} {employee.lastName}
                       </Typography>
-                    )}
+                      {employee.role && (
+                        <Typography variant="caption" color="text.secondary">
+                          {employee.role}
+                        </Typography>
+                      )}
+                    </Box>
+                    <Box
+                      sx={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: '50%',
+                        bgcolor: colors.bg,
+                      }}
+                    />
                   </Box>
-                  <Box
-                    sx={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: '50%',
-                      bgcolor: colors.bg,
-                    }}
-                  />
-                </Box>
+                </Tooltip>
               );
             })}
           </Box>

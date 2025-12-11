@@ -1688,3 +1688,66 @@ td::after,
   border-color: transparent !important;
 }
 
+
+/* ===================================================================
+   🔥 GLOBAL BORDER KILLER – NUCLEAR OPTION
+   removes all grid lines everywhere - MUST BE LAST IN FILE
+   =================================================================== */
+*,
+*::before,
+*::after {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Remove borders from all tables */
+table,
+th,
+td {
+  border: none !important;
+  outline: none !important;
+  border-collapse: collapse !important;
+}
+
+/* Remove borders from Tailwind utility classes */
+[class*="border"],
+[class*="divide"],
+.border,
+.divide-x,
+.divide-y {
+  border: none !important;
+  border-width: 0 !important;
+}
+
+/* Remove MUI DataGrid borders */
+.MuiDataGrid-root,
+.MuiDataGrid-columnHeaders,
+.MuiDataGrid-columnHeader,
+.MuiDataGrid-cell,
+.MuiDataGrid-row {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Remove FullCalendar borders */
+.fc,
+.fc * {
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* Remove react-big-calendar borders */
+.rbc-day-bg,
+.rbc-month-row,
+.rbc-month-view,
+.rbc-time-content,
+.rbc-time-header,
+.rbc-time-slot,
+.rbc-row,
+.rbc-header {
+  border: none !important;
+  box-shadow: none !important;
+}
+

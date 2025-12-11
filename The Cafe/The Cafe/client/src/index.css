@@ -123,10 +123,10 @@
    BASE STYLES
    ============================================ */
 
+
 @layer base {
-  * {
-    /* border: 1px solid hsl(var(--border)); removed globally */ border-color: hsl(var(--border));
-  }
+  /* All borders removed globally - 2025 clean UI */
+  /* Previous universal selector with border-color has been removed */
 
   html {
     scroll-behavior: smooth;
@@ -887,7 +887,7 @@ html {
 .stat-modern {
   @apply relative overflow-hidden rounded-2xl p-6;
   background: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--muted)) 100%);
-  /* border: 1px solid hsl(var(--border)); removed globally */ border-color: hsl(var(--border));
+  /* All borders removed globally - 2025 clean UI */
 }
 
 .stat-modern::before {

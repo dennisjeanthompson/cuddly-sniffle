@@ -125,6 +125,16 @@
 
 
 @layer base {
+  /* CRITICAL: Override shadcn/ui's default border on all elements */
+  /* This removes the * { border: 1px solid hsl(var(--border)); } that shadcn/ui adds */
+  *,
+  *::before,
+  *::after {
+    border-width: 0 !important;
+    border: none !important;
+    border-color: transparent !important;
+  }
+
   /* All borders removed globally - 2025 clean UI */
   /* Previous universal selector with border-color has been removed */
 

@@ -818,19 +818,25 @@ const EnhancedScheduler = () => {
           {/* Feature 4: Shift Templates */}
           <ButtonGroup variant="outlined" size="small">
             <Tooltip title="Create Morning Shift (7AM-3PM)">
-              <Button onClick={() => applyShiftTemplate('morning')} disabled={!isPublished}>
-                <MorningIcon />
-              </Button>
+              <span>
+                <Button onClick={() => applyShiftTemplate('morning')} disabled={!isPublished}>
+                  <MorningIcon />
+                </Button>
+              </span>
             </Tooltip>
             <Tooltip title="Create Afternoon Shift (3PM-11PM)">
-              <Button onClick={() => applyShiftTemplate('afternoon')} disabled={!isPublished}>
-                <AfternoonIcon />
-              </Button>
+              <span>
+                <Button onClick={() => applyShiftTemplate('afternoon')} disabled={!isPublished}>
+                  <AfternoonIcon />
+                </Button>
+              </span>
             </Tooltip>
             <Tooltip title="Create Night Shift (11PM-7AM)">
-              <Button onClick={() => applyShiftTemplate('night')} disabled={!isPublished}>
-                <NightIcon />
-              </Button>
+              <span>
+                <Button onClick={() => applyShiftTemplate('night')} disabled={!isPublished}>
+                  <NightIcon />
+                </Button>
+              </span>
             </Tooltip>
           </ButtonGroup>
 
@@ -861,15 +867,17 @@ const EnhancedScheduler = () => {
                 variant="outlined"
               />
               <Tooltip title="Paste copied shifts to this week">
-                <Button
-                  variant="contained"
-                  startIcon={<PasteIcon />}
-                  size="small"
-                  onClick={handlePasteWeek}
-                  disabled={createShiftMutation.isPending || !isPublished}
-                >
-                  Paste Week
-                </Button>
+                <span>
+                  <Button
+                    variant="contained"
+                    startIcon={<PasteIcon />}
+                    size="small"
+                    onClick={handlePasteWeek}
+                    disabled={createShiftMutation.isPending || !isPublished}
+                  >
+                    Paste Week
+                  </Button>
+                </span>
               </Tooltip>
             </>
           )}

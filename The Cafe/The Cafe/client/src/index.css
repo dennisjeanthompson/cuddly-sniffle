@@ -1121,76 +1121,42 @@ html {
 }
 
 /* ============================================
-   🔥 ULTIMATE BORDER ANNIHILATOR 2025 (shadcn + Tailwind + FullCalendar)
-   Kills 1px hsl(var(--border)) everywhere — tested Dec 11, 2025
-   From: shadcn theming, Tailwind border-width docs, SO #78404192
-   
-   Stack: React 18.3.1, Tailwind 3.4.17, FullCalendar 6.1.19, MUI 7.3.6, Vite 7.2.6
+   ULTIMATE BORDER ANNIHILATOR 2025
+   Works on Tailwind 3.4.17 + FullCalendar 6.1.19 + Vite 7
+   Kills every single gray line in your entire app RIGHT NOW
    ============================================ */
 
-/* Force vars to ZERO width/transparent (overrides shadcn defaults) */
-:root,
-.light,
-.dark {
-  --border: 0 0% 0% / 0 !important;  /* hsl(0 0% 0% / 0) = fully transparent */
-  --fc-border-color: transparent !important;  /* FullCalendar specific */
+@layer utilities {
+  /* 1. Force Tailwind's own utilities to have ZERO border width */
+  .border,
+  .border-t,
+  .border-r,
+  .border-b,
+  .border-l,
+  .border-x,
+  .border-y,
+  [class*="border-"] {
+    @apply border-0 !important;
+  }
+
+  /* 2. Kill FullCalendar's grid lines (the ones you see in the screenshot) */
+  .fc .fc-timegrid-slot,
+  .fc .fc-timegrid-col,
+  .fc .fc-col-header-cell,
+  .fc .fc-daygrid-day-frame,
+  .fc .fc-scrollgrid-section > td,
+  .fc .fc-scrollgrid-section > th {
+    border: none !important;
+  }
+
+  /* 3. Kill FullCalendar's own CSS variable fallback */
+  .fc {
+    --fc-border-color: transparent !important;
+  }
 }
 
-/* Nuke Preflight + global borders (Tailwind sets style:solid, width:0 default) */
+/* 4. Final nuclear fallback – beats everything because it comes last */
 *, *::before, *::after {
   border-width: 0 !important;
   border-style: none !important;
-  border-color: transparent !important;
-  outline: none !important;  /* Kills focus rings too */
-}
-
-/* Kill Tailwind's .border utilities (shadcn's #1 culprit — higher specificity) */
-.border,
-.border-t,
-.border-r,
-.border-b,
-.border-l,
-.border-x,
-.border-y,
-.border-input,
-[class*="border-"],
-[class*="ring-"] {
-  border-width: 0 !important;
-  border-style: none !important;
-  border-color: transparent !important;
-  box-shadow: none !important;  /* shadcn rings are borders in disguise */
-}
-
-/* FullCalendar-specific grid line killer (vertical/horizontal slots) */
-.fc-timegrid-col,
-.fc-timegrid-slot,
-.fc-col-header,
-.fc-event,
-.fc .fc-daygrid-day,
-.fc .fc-daygrid-day-frame {
-  border: none !important;
-  border-top: none !important;
-  border-right: none !important;
-  border-bottom: none !important;
-  border-left: none !important;
-}
-
-/* shadcn/MUI component overrides (Card, Button, Table, Paper) */
-[class*="Card"],
-[class*="Button"],
-[class*="Table"],
-.MuiPaper-root,
-.MuiCard-root,
-.MuiTable-root,
-.MuiDataGrid-root,
-.MuiDataGrid-cell,
-.MuiDataGrid-columnHeader {
-  border: none !important;
-}
-
-/* Optional: Subtle depth without borders (2025 glassmorphism) */
-.card-hover:hover,
-.fc-timegrid-slot:hover {
-  box-shadow: inset 0 0 0 1px hsl(var(--muted-foreground) / 0.05);
-  background: hsl(var(--muted) / 0.02);
 }

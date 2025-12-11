@@ -164,7 +164,7 @@
 @layer components {
   /* Premium Card with Glassmorphism */
   .card-glass {
-    @apply relative overflow-hidden rounded-2xl border border-white/10;
+    @apply relative overflow-hidden rounded-2xl; /* border removed */
     background: var(--glass-bg);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
@@ -172,7 +172,7 @@
   
   /* Premium Card with Glow Effect */
   .card-glow {
-    @apply relative overflow-hidden rounded-2xl border transition-all duration-300;
+    @apply relative overflow-hidden rounded-2xl transition-all duration-300; /* border removed */
   }
   
   .card-glow:hover {
@@ -186,11 +186,11 @@
   
   /* Hero Metric Card - 2025 SaaS Style */
   .metric-card {
-    @apply relative overflow-hidden rounded-2xl border border-border/50 bg-card p-6 transition-all duration-300;
+    @apply relative overflow-hidden rounded-2xl bg-card p-6 transition-all duration-300; /* border removed */
   }
   
   .metric-card:hover {
-    @apply border-primary/30;
+    /* border-primary removed */
     transform: translateY(-4px);
     box-shadow: 0 20px 40px -20px rgba(0, 0, 0, 0.3), var(--glow-emerald);
   }
@@ -268,7 +268,7 @@
 
   /* Stat Card */
   .stat-card {
-    @apply bg-card rounded-xl border p-5 transition-all duration-200;
+    @apply bg-card rounded-xl p-5 transition-all duration-200; /* border removed */
   }
   
   .stat-card:hover {
@@ -290,7 +290,7 @@
 
   /* Table Styles */
   .table-row {
-    @apply border-b border-border transition-colors;
+    @apply transition-colors; /* border-b border-border removed */
   }
   
   .table-row:hover {
@@ -678,7 +678,7 @@ html {
 
 /* Mobile card components */
 .mobile-card {
-  @apply bg-card rounded-2xl border-2 border-border/50 p-5 shadow-sm;
+  @apply bg-card rounded-2xl p-5 shadow-sm; /* border-2 border-border/50 removed */
   transition: all 0.2s ease;
 }
 
@@ -695,7 +695,7 @@ html {
 
 /* Mobile header */
 .mobile-header {
-  @apply sticky top-0 z-40 backdrop-blur-xl bg-background/80 border-b px-5 py-4;
+  @apply sticky top-0 z-40 backdrop-blur-xl bg-background/80 px-5 py-4; /* border-b removed */
 }
 
 .mobile-header-title {
@@ -713,7 +713,7 @@ html {
 
 /* Mobile stat card */
 .mobile-stat {
-  @apply bg-gradient-to-br from-card to-muted/30 rounded-2xl p-5 border;
+  @apply bg-gradient-to-br from-card to-muted/30 rounded-2xl p-5; /* border removed */
 }
 
 .mobile-stat-label {
@@ -726,7 +726,7 @@ html {
 
 /* Mobile list */
 .mobile-list {
-  @apply divide-y divide-border rounded-2xl overflow-hidden border bg-card;
+  @apply rounded-2xl overflow-hidden bg-card; /* divide-y divide-border border removed */
 }
 
 .mobile-list-item {
@@ -763,7 +763,7 @@ html {
 }
 
 .mobile-btn-outline {
-  @apply border-2 border-primary text-primary bg-transparent hover:bg-primary/5;
+  @apply text-primary bg-transparent hover:bg-primary/5; /* border-2 border-primary removed */
 }
 
 /* Mobile bottom sheet */
@@ -797,12 +797,12 @@ html {
   background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 0px solid rgba(255, 255, 255, 0.966);
 }
 
 .dark .glass {
   background: rgba(30, 30, 50, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 0px solid rgba(255, 255, 255, 0.1);
 }
 
 .glass-card {
@@ -810,13 +810,13 @@ html {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.7) 100%);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 0px solid rgba(255, 255, 255, 0.979);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
 }
 
 .dark .glass-card {
   background: linear-gradient(135deg, rgba(30, 30, 50, 0.9) 0%, rgba(20, 20, 40, 0.7) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 0px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
@@ -860,7 +860,7 @@ html {
 
 /* Modern Card Variants */
 .card-modern {
-  @apply rounded-2xl border bg-card p-6;
+  @apply rounded-2xl bg-card p-6; /* border removed */
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
 }
@@ -871,7 +871,7 @@ html {
 }
 
 .card-elevated {
-  @apply rounded-2xl border bg-card;
+  @apply rounded-2xl bg-card; /* border removed */
   box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.1);
 }
 
@@ -903,37 +903,33 @@ html {
 }
 
 .stat-violet {
-  @apply relative overflow-hidden rounded-2xl p-6 border;
+  @apply relative overflow-hidden rounded-2xl p-6; /* border removed */
   background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(139, 92, 246, 0.05) 100%);
-  border-color: rgba(139, 92, 246, 0.2);
 }
 
 .stat-blue {
-  @apply relative overflow-hidden rounded-2xl p-6 border;
+  @apply relative overflow-hidden rounded-2xl p-6; /* border removed */
   background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%);
-  border-color: rgba(59, 130, 246, 0.2);
 }
 
 .stat-emerald {
-  @apply relative overflow-hidden rounded-2xl p-6 border;
+  @apply relative overflow-hidden rounded-2xl p-6; /* border removed */
   background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%);
-  border-color: rgba(16, 185, 129, 0.2);
 }
 
 .stat-amber {
-  @apply relative overflow-hidden rounded-2xl p-6 border;
+  @apply relative overflow-hidden rounded-2xl p-6; /* border removed */
   background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(245, 158, 11, 0.05) 100%);
-  border-color: rgba(245, 158, 11, 0.2);
 }
 
 /* Modern Calendar Styles */
 .calendar-modern {
-  @apply rounded-2xl border bg-card overflow-hidden;
+  @apply rounded-2xl bg-card overflow-hidden; /* border removed */
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
 }
 
 .calendar-header {
-  @apply flex items-center justify-between p-4 border-b bg-muted/30;
+  @apply flex items-center justify-between p-4 bg-muted/30; /* border-b removed */
 }
 
 .calendar-day-header {
@@ -941,7 +937,7 @@ html {
 }
 
 .calendar-cell {
-  @apply min-h-28 p-2 border-r border-b transition-all duration-200;
+  @apply min-h-28 p-2 transition-all duration-200; /* border-r border-b removed */
   background: hsl(var(--card));
 }
 

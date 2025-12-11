@@ -1751,57 +1751,5 @@ td {
   box-shadow: none !important;
 }
 
-
-/* ===================================================================
-   🔥 FINAL NUCLEAR GRID LINE KILLER FOR react-big-schedule
-   This is the REAL source of the gray grid lines
-   =================================================================== */
-.react-big-schedule,
-.react-big-schedule *,
-.react-big-schedule table,
-.react-big-schedule td,
-.react-big-schedule th,
-.react-big-schedule .scheduler-content,
-.react-big-schedule .scheduler-bg-table,
-.react-big-schedule .scheduler-bg,
-.react-big-schedule .timeline,
-.react-big-schedule .slot,
-.react-big-schedule .header3-text,
-.react-big-schedule .header2-text,
-.react-big-schedule .header1-text,
-.react-big-schedule .resource-table,
-.react-big-schedule .event-item,
-.react-big-schedule .time-line {
-  border: none !important;
-  border-top: none !important;
-  border-bottom: none !important;
-  border-left: none !important;
-  border-right: none !important;
-  border-color: transparent !important;
-  box-shadow: none !important;
-  outline: none !important;
-  background-image: none !important;
-}
-
-/* Remove vertical and horizontal lines specifically */
-.react-big-schedule .scheduler-bg-table td,
-.react-big-schedule .scheduler-content-table td,
-.react-big-schedule .scheduler-content-table th {
-  border: none !important;
-  background: transparent !important;
-}
-
-/* Hide any pseudo-element lines */
-.react-big-schedule *::before,
-.react-big-schedule *::after {
-  border: none !important;
-  box-shadow: none !important;
-  background: transparent !important;
-}
-
-/* Force transparent background on grid cells */
-.react-big-schedule .scheduler-bg,
-.react-big-schedule .scheduler-content {
-  background: transparent !important;
-}
+/* End of CSS file - cleaned up react-big-schedule remnants */
 

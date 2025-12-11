@@ -1305,23 +1305,37 @@ table, thead, tbody, tfoot, tr, th, td {
 /* =========================================
    USER-REQUESTED FULLCALENDAR OVERRIDES (AGGRESSIVE)
    Fix for remaining grid lines in FullCalendar
+   FullCalendar hardcodes its own borders - must override
    ========================================= */
 
-/* Remove all visible borders and backgrounds in the time grid and headers */
+/* CRITICAL: Override FullCalendar's hardcoded borders */
 .fc .fc-timegrid-slot,
 .fc .fc-timegrid-slot-lane,
 .fc .fc-col,
+.fc .fc-timegrid-col,
 .fc .fc-scrollgrid-section,
 .fc .fc-scrollgrid-section table,
 .fc .fc-scrollgrid-section > td,
 .fc td, 
 .fc th,
 .fc .fc-col-header-cell,
-.fc .fc-timegrid-axis {
+.fc .fc-timegrid-axis,
+.fc .fc-timegrid-divider,
+.fc .fc-daygrid-day,
+.fc .fc-daygrid-day-frame,
+.fc .fc-scrollgrid-sync-table,
+.fc .fc-scrollgrid-sync-inner {
   border: none !important;
+  border-top: none !important;
+  border-bottom: none !important;
+  border-left: none !important;
+  border-right: none !important;
   border-color: transparent !important;
+  border-style: none !important;
+  border-width: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
+  outline: none !important;
 }
 
 /* Remove the 'today' highlight if needed */
@@ -1338,15 +1352,20 @@ table, thead, tbody, tfoot, tr, th, td {
 .fc .fc-timegrid-slot::before,
 .fc .fc-timegrid-slot-lane::before,
 .fc .fc-timegrid-slot::after,
-.fc .fc-timegrid-slot-lane::after {
-  display: none !important;
-  content: none !important;
+.fc .fc-timegrid-slot-lane::after,
+.fc *::before,
+.fc *::after {
   border: none !important;
+  box-shadow: none !important;
 }
 
 /* Ensure the main scrollgrid frame is also borderless */
-.fc-theme-standard .fc-scrollgrid {
+.fc-theme-standard .fc-scrollgrid,
+.fc-theme-standard .fc-scrollgrid-section,
+.fc-theme-standard td,
+.fc-theme-standard th {
   border: none !important;
+  border-color: transparent !important;
 }
 
 

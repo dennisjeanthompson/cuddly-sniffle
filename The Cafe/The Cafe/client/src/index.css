@@ -1160,3 +1160,20 @@ html {
   border-width: 0 !important;
   border-style: none !important;
 }
+
+/* ============================================
+   2025 SIDEBAR TRANSITIONS
+   Premium Linear/Vercel/Raycast style
+   ============================================ */
+
+/* Smooth sidebar drawer transition */
+.MuiDrawer-paper {
+  transition: width 225ms cubic-bezier(0.4, 0, 0.2, 1), 
+              transform 225ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Ensure drawer doesn't overlap content */
+.MuiDrawer-docked .MuiDrawer-paper {
+  position: fixed !important;
+  border-right: 1px solid hsl(var(--border)) !important;
+}

@@ -652,13 +652,16 @@ const EnhancedScheduler = () => {
         variant="persistent"
         className="no-print"
         sx={{
-          width: rosterOpen ? 280 : 0,
+          width: rosterOpen ? 320 : 0,
           flexShrink: 0,
           '& .MuiDrawer-paper': {
-            width: 280,
+            width: 320,
             boxSizing: 'border-box',
-            top: 64,
-            height: 'calc(100% - 64px)',
+            borderRight: '1px solid',
+            borderColor: 'divider',
+            bgcolor: 'background.paper',
+            pt: '64px', // below header
+            height: 'calc(100vh - 64px)',
           },
         }}
       >
@@ -779,8 +782,9 @@ const EnhancedScheduler = () => {
         sx={{
           flexGrow: 1,
           p: 3,
-          transition: 'margin 0.2s',
-          marginLeft: rosterOpen ? '280px' : 0,
+          transition: 'margin-left 225ms cubic-bezier(0.4, 0, 0.2, 1), width 225ms cubic-bezier(0.4, 0, 0.2, 1)',
+          marginLeft: rosterOpen ? '320px' : '0px',
+          width: rosterOpen ? 'calc(100% - 320px)' : '100%',
         }}
       >
         {/* Toolbar */}

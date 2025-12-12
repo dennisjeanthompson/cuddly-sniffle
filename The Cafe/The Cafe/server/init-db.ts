@@ -530,11 +530,11 @@ export async function seedSampleUsers() {
     const sampleUsers = [
       // Manager
       { 
-        id: 'user-mgr-maria',
-        username: 'maria', 
-        firstName: 'Maria Clara', 
-        lastName: 'Santos', 
-        email: 'maria.santos@thecafe.ph', 
+        id: 'user-mgr-sarah',
+        username: 'sarah', 
+        firstName: 'Sarah', 
+        lastName: 'Thompson', 
+        email: 'sarah.thompson@thecafe.ph', 
         role: 'manager', 
         position: 'Branch Manager', 
         hourlyRate: '187.50',
@@ -543,16 +543,16 @@ export async function seedSampleUsers() {
       },
       // Employees
       { 
-        id: 'user-emp-juan',
-        username: 'juan', 
-        firstName: 'Juan Carlos', 
-        lastName: 'Dela Cruz', 
-        email: 'juan.delacruz@thecafe.ph', 
+        id: 'user-emp-sam',
+        username: 'sam', 
+        firstName: 'Sam', 
+        lastName: 'Santos', 
+        email: 'sam.santos@thecafe.ph', 
         role: 'employee', 
-        position: 'Senior Barista', 
+        position: 'Barista', 
         hourlyRate: '112.50',
-        sssLoan: '1500',
-        pagibigLoan: '500',
+        sssLoan: '0',
+        pagibigLoan: '0',
       },
       { 
         id: 'user-emp-ana',
@@ -577,18 +577,6 @@ export async function seedSampleUsers() {
         hourlyRate: '100.00',
         sssLoan: '2000',
         pagibigLoan: '0',
-      },
-      { 
-        id: 'user-emp-rosa',
-        username: 'rosa', 
-        firstName: 'Rosa Linda', 
-        lastName: 'Fernandez', 
-        email: 'rosa.fernandez@thecafe.ph', 
-        role: 'employee', 
-        position: 'Barista', 
-        hourlyRate: '93.75',
-        sssLoan: '0',
-        pagibigLoan: '1000',
       },
     ];
 

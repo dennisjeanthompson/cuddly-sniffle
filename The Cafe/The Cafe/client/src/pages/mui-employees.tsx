@@ -58,6 +58,7 @@ import {
   Menu,
   ListItemIcon,
   ListItemText,
+  useTheme,
 } from "@mui/material";
 import Grid from "@mui/material/Grid";
 
@@ -169,6 +170,7 @@ const initialFormData: EmployeeFormData = {
 };
 
 export default function MuiEmployees() {
+  const theme = useTheme();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();

@@ -94,6 +94,9 @@ import {
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
   CalendarMonth as CalendarIcon,
+  Security as SecurityIcon,
+  LocalHospital as LocalHospitalIcon,
+  Home as HomeIcon,
 } from "@mui/icons-material";
 
 // MUI X Data Grid
@@ -1401,60 +1404,174 @@ export default function MuiEmployees() {
           </DialogActions>
         </Dialog>
 
-        {/* Deductions Dialog */}
+        {/* Deductions Dialog - Redesigned with Mandatories Preview + Extras */}
         <Dialog open={deductionsDialogOpen} onClose={() => setDeductionsDialogOpen(false)} maxWidth="sm" fullWidth>
           <form onSubmit={handleDeductionsSubmit}>
-            <DialogTitle>
-              Manage Deductions: {currentEmployee?.firstName} {currentEmployee?.lastName}
+            <DialogTitle sx={{ pb: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <ReceiptIcon color="primary" />
+                <Box>
+                  <Typography variant="h6">
+                    Employee Deductions
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {currentEmployee?.firstName} {currentEmployee?.lastName}
+                  </Typography>
+                </Box>
+              </Box>
             </DialogTitle>
-            <DialogContent dividers>
-              <Stack spacing={3} sx={{ mt: 1 }}>
-                <Alert severity="info">
-                  These deductions will be applied automatically to each pay period for this employee.
+            <DialogContent dividers sx={{ p: 0 }}>
+              {/* Section 1: Mandatory Deductions (Read-Only Preview) */}
+              <Box sx={{ p: 2.5, bgcolor: alpha(theme.palette.info.main, 0.04) }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                  <CheckCircleIcon sx={{ color: 'success.main', fontSize: 20 }} />
+                  <Typography variant="subtitle2" fontWeight={600} color="success.main">
+                    Mandatory Deductions (Auto-Applied)
+                  </Typography>
+                </Box>
+                
+                <Alert severity="info" sx={{ mb: 2, py: 0.5 }} icon={false}>
+                  <Typography variant="caption">
+                    These are automatically calculated based on 2025 Philippine government rates.
+                    Values shown are estimates based on hourly rate × 176 hrs/month.
+                  </Typography>
                 </Alert>
 
-                <TextField
-                  fullWidth
-                  label="SSS Loan Deduction (₱ per pay period)"
-                  type="number"
-                  value={deductionsFormData.sssLoanDeduction}
-                  onChange={(e) => setDeductionsFormData({ ...deductionsFormData, sssLoanDeduction: e.target.value })}
-                  inputProps={{ min: 0, step: 0.01 }}
-                  helperText="Amount to deduct for SSS loan repayment"
-                />
+                {/* Calculate estimated monthly salary for preview */}
+                {(() => {
+                  const hourlyRate = parseFloat(currentEmployee?.hourlyRate || '0');
+                  const estimatedMonthly = hourlyRate * 176; // ~22 days × 8 hours
+                  
+                  // SSS: 5% of MSC (floor ₱5k, ceiling ₱35k)
+                  const msc = Math.min(Math.max(estimatedMonthly, 5000), 35000);
+                  const sss = msc * 0.05;
+                  
+                  // PhilHealth: 2.5% (floor ₱10k, ceiling ₱100k)
+                  const philBase = Math.min(Math.max(estimatedMonthly, 10000), 100000);
+                  const philHealth = philBase * 0.025;
+                  
+                  // Pag-IBIG: 2% max ₱100
+                  const pagibig = Math.min(estimatedMonthly * 0.02, 100);
+                  
+                  // BIR: 0% if annual <₱250k
+                  const annualEstimate = estimatedMonthly * 12;
+                  const tax = annualEstimate <= 250000 ? 0 : (annualEstimate - 250000) * 0.15 / 12;
 
-                <TextField
-                  fullWidth
-                  label="Pag-IBIG Loan Deduction (₱ per pay period)"
-                  type="number"
-                  value={deductionsFormData.pagibigLoanDeduction}
-                  onChange={(e) => setDeductionsFormData({ ...deductionsFormData, pagibigLoanDeduction: e.target.value })}
-                  inputProps={{ min: 0, step: 0.01 }}
-                  helperText="Amount to deduct for Pag-IBIG loan repayment"
-                />
+                  return (
+                    <Stack spacing={1.5}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <SecurityIcon sx={{ fontSize: 18, color: '#3b82f6' }} />
+                          <Typography variant="body2">SSS (5%)</Typography>
+                        </Box>
+                        <Typography variant="body2" fontWeight={600}>₱{sss.toFixed(2)}</Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <LocalHospitalIcon sx={{ fontSize: 18, color: '#10b981' }} />
+                          <Typography variant="body2">PhilHealth (2.5%)</Typography>
+                        </Box>
+                        <Typography variant="body2" fontWeight={600}>₱{philHealth.toFixed(2)}</Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <HomeIcon sx={{ fontSize: 18, color: '#8b5cf6' }} />
+                          <Typography variant="body2">Pag-IBIG (2%)</Typography>
+                        </Box>
+                        <Typography variant="body2" fontWeight={600}>₱{pagibig.toFixed(2)}</Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <ReceiptIcon sx={{ fontSize: 18, color: '#f59e0b' }} />
+                          <Typography variant="body2">Withholding Tax</Typography>
+                        </Box>
+                        <Typography variant="body2" fontWeight={600}>₱{tax.toFixed(2)}</Typography>
+                      </Box>
+                      <Divider sx={{ my: 1 }} />
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="body2" color="text.secondary">Est. Monthly Salary:</Typography>
+                        <Typography variant="body2" color="text.secondary">₱{estimatedMonthly.toLocaleString()}</Typography>
+                      </Box>
+                    </Stack>
+                  );
+                })()}
+              </Box>
 
-                <TextField
-                  fullWidth
-                  label="Cash Advance Deduction (₱ per pay period)"
-                  type="number"
-                  value={deductionsFormData.cashAdvanceDeduction}
-                  onChange={(e) => setDeductionsFormData({ ...deductionsFormData, cashAdvanceDeduction: e.target.value })}
-                  inputProps={{ min: 0, step: 0.01 }}
-                  helperText="Amount to deduct for cash advance repayment"
-                />
+              {/* Section 2: Additional Deductions (Editable) */}
+              <Box sx={{ p: 2.5 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                  <EditIcon sx={{ color: 'primary.main', fontSize: 20 }} />
+                  <Typography variant="subtitle2" fontWeight={600} color="primary.main">
+                    Additional Deductions (Editable)
+                  </Typography>
+                </Box>
 
-                <TextField
-                  fullWidth
-                  label="Other Deductions (₱ per pay period)"
-                  type="number"
-                  value={deductionsFormData.otherDeductions}
-                  onChange={(e) => setDeductionsFormData({ ...deductionsFormData, otherDeductions: e.target.value })}
-                  inputProps={{ min: 0, step: 0.01 }}
-                  helperText="Any other recurring deductions"
-                />
-              </Stack>
+                <Alert severity="warning" sx={{ mb: 2, py: 0.5 }} icon={false}>
+                  <Typography variant="caption">
+                    These are deducted from net pay each period. For loans, set to ₱0 when fully paid.
+                  </Typography>
+                </Alert>
+
+                <Stack spacing={2.5}>
+                  <TextField
+                    fullWidth
+                    label="SSS Loan Repayment"
+                    type="number"
+                    size="small"
+                    value={deductionsFormData.sssLoanDeduction}
+                    onChange={(e) => setDeductionsFormData({ ...deductionsFormData, sssLoanDeduction: e.target.value })}
+                    inputProps={{ min: 0, step: 0.01 }}
+                    InputProps={{
+                      startAdornment: <Typography sx={{ mr: 1, color: 'text.secondary' }}>₱</Typography>,
+                    }}
+                    helperText="Per pay period"
+                  />
+
+                  <TextField
+                    fullWidth
+                    label="Pag-IBIG Loan Repayment"
+                    type="number"
+                    size="small"
+                    value={deductionsFormData.pagibigLoanDeduction}
+                    onChange={(e) => setDeductionsFormData({ ...deductionsFormData, pagibigLoanDeduction: e.target.value })}
+                    inputProps={{ min: 0, step: 0.01 }}
+                    InputProps={{
+                      startAdornment: <Typography sx={{ mr: 1, color: 'text.secondary' }}>₱</Typography>,
+                    }}
+                    helperText="Per pay period"
+                  />
+
+                  <TextField
+                    fullWidth
+                    label="Cash Advance Deduction"
+                    type="number"
+                    size="small"
+                    value={deductionsFormData.cashAdvanceDeduction}
+                    onChange={(e) => setDeductionsFormData({ ...deductionsFormData, cashAdvanceDeduction: e.target.value })}
+                    inputProps={{ min: 0, step: 0.01 }}
+                    InputProps={{
+                      startAdornment: <Typography sx={{ mr: 1, color: 'text.secondary' }}>₱</Typography>,
+                    }}
+                    helperText="Per pay period"
+                  />
+
+                  <TextField
+                    fullWidth
+                    label="Other Recurring Deductions"
+                    type="number"
+                    size="small"
+                    value={deductionsFormData.otherDeductions}
+                    onChange={(e) => setDeductionsFormData({ ...deductionsFormData, otherDeductions: e.target.value })}
+                    inputProps={{ min: 0, step: 0.01 }}
+                    InputProps={{
+                      startAdornment: <Typography sx={{ mr: 1, color: 'text.secondary' }}>₱</Typography>,
+                    }}
+                    helperText="Per pay period (e.g., uniform, penalties)"
+                  />
+                </Stack>
+              </Box>
             </DialogContent>
-            <DialogActions sx={{ p: 2.5 }}>
+            <DialogActions sx={{ p: 2.5, bgcolor: alpha(theme.palette.background.default, 0.5) }}>
               <Button onClick={() => setDeductionsDialogOpen(false)}>Cancel</Button>
               <Button
                 type="submit"
@@ -1462,7 +1579,7 @@ export default function MuiEmployees() {
                 disabled={updateDeductions.isPending}
                 startIcon={updateDeductions.isPending ? <CircularProgress size={16} /> : <SaveIcon />}
               >
-                Save Deductions
+                Save Changes
               </Button>
             </DialogActions>
           </form>

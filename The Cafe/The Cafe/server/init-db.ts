@@ -356,30 +356,85 @@ export async function seedDeductionRates() {
       });
     }
 
-    // PhilHealth rate (2024: 5% of salary, employee pays half = 2.5%)
+    // PhilHealth rate (2025: 5% of salary, employee pays half = 2.5%)
+    // Floor: ₱10,000, Ceiling: ₱100,000
     await db.insert(deductionRates).values({
       id: randomUUID(),
       type: 'philhealth',
-      minSalary: '0',
-      maxSalary: null,
+      minSalary: '10000',  // 2025 floor
+      maxSalary: '100000', // 2025 ceiling
       employeeRate: '2.5',
-      description: '2.5% of monthly salary (employee share)',
+      description: '2.5% of monthly salary (employee share), floor ₱10k, ceiling ₱100k',
       isActive: true,
     });
 
-    // Pag-IBIG rate (2% of salary, max contribution 100)
+    // Pag-IBIG rate (2% of salary, max contribution ₱100, soon ₱200)
     await db.insert(deductionRates).values({
       id: randomUUID(),
       type: 'pagibig',
       minSalary: '0',
       maxSalary: null,
       employeeRate: '2',
-      employeeContribution: '100',
-      description: '2% of salary, max P100',
+      employeeContribution: '100', // Max cap (will be ₱200 soon)
+      description: '2% of salary, max ₱100 (soon ₱200)',
       isActive: true,
     });
 
-    console.log('✅ Deduction rates seeded');
+    // BIR Withholding Tax - TRAIN Law Progressive Brackets (2025)
+    // Based on BIR RR 11-2018 / TRAIN Law
+    // Using ANNUAL income thresholds for calculation
+    const birTaxBrackets = [
+      { 
+        minSalary: '0', 
+        maxSalary: '250000', 
+        employeeRate: '0',
+        description: 'Tax exempt (annual ≤₱250,000)'
+      },
+      { 
+        minSalary: '250001', 
+        maxSalary: '400000', 
+        employeeRate: '15',
+        description: '15% of excess over ₱250k (annual ₱250k-₱400k)'
+      },
+      { 
+        minSalary: '400001', 
+        maxSalary: '800000', 
+        employeeRate: '20',
+        description: '₱22,500 + 20% of excess over ₱400k (annual ₱400k-₱800k)'
+      },
+      { 
+        minSalary: '800001', 
+        maxSalary: '2000000', 
+        employeeRate: '25',
+        description: '₱102,500 + 25% of excess over ₱800k (annual ₱800k-₱2M)'
+      },
+      { 
+        minSalary: '2000001', 
+        maxSalary: '8000000', 
+        employeeRate: '30',
+        description: '₱402,500 + 30% of excess over ₱2M (annual ₱2M-₱8M)'
+      },
+      { 
+        minSalary: '8000001', 
+        maxSalary: null, 
+        employeeRate: '35',
+        description: '₱2,202,500 + 35% of excess over ₱8M (annual >₱8M)'
+      },
+    ];
+
+    for (const bracket of birTaxBrackets) {
+      await db.insert(deductionRates).values({
+        id: randomUUID(),
+        type: 'tax',
+        minSalary: bracket.minSalary,
+        maxSalary: bracket.maxSalary,
+        employeeRate: bracket.employeeRate,
+        description: bracket.description,
+        isActive: true,
+      });
+    }
+
+    console.log('✅ Deduction rates seeded (SSS 33 brackets, PhilHealth, Pag-IBIG, BIR TRAIN law)');
   } catch (error) {
     console.error('❌ Error seeding deduction rates:', error);
     throw error;

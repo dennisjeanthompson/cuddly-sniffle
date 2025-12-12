@@ -5,132 +5,75 @@ import {
   CardContent,
   CardHeader,
   Typography,
-  Switch,
-  Button,
   Stack,
   Divider,
   CircularProgress,
-  FormControlLabel,
   useTheme,
   alpha,
   Alert,
+  Chip,
+  Button,
 } from "@mui/material";
 import {
-  Settings as SettingsIcon,
-  Save as SaveIcon,
+  CheckCircle,
   Security,
   LocalHospital,
   Home,
   Receipt,
+  Info,
+  OpenInNew,
 } from "@mui/icons-material";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
-import { useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 
-interface DeductionSettings {
-  id: string;
-  branchId: string;
-  deductSSS: boolean;
-  deductPhilHealth: boolean;
-  deductPagibig: boolean;
-  deductWithholdingTax: boolean;
-}
-
-const deductionItems = [
+// 2025 Philippine mandatory deduction rates (for display only)
+const mandatoryDeductions = [
   {
-    key: "deductSSS" as const,
+    key: "sss",
     label: "SSS Contribution",
-    description: "Social Security System employee contribution (Default: ON)",
+    description: "Social Security System - Employee share 5% of MSC",
+    details: "MSC Floor: ₱5,000 | Ceiling: ₱35,000 | 33 salary brackets",
     icon: Security,
     color: "#3b82f6",
-    defaultValue: true,
+    rate: "5%",
   },
   {
-    key: "deductPhilHealth" as const,
+    key: "philhealth",
     label: "PhilHealth Contribution",
-    description: "Philippine Health Insurance Corporation contribution (Default: OFF)",
+    description: "Philippine Health Insurance Corporation - 2.5% employee share",
+    details: "Salary Floor: ₱10,000 | Ceiling: ₱100,000",
     icon: LocalHospital,
     color: "#10b981",
-    defaultValue: false,
+    rate: "2.5%",
   },
   {
-    key: "deductPagibig" as const,
-    label: "Pag-IBIG Contribution",
-    description: "Home Development Mutual Fund contribution (Default: OFF)",
+    key: "pagibig",
+    label: "Pag-IBIG (HDMF) Contribution",
+    description: "Home Development Mutual Fund - 2% employee share",
+    details: "Maximum contribution: ₱100 (soon ₱200)",
     icon: Home,
     color: "#8b5cf6",
-    defaultValue: false,
+    rate: "2%",
   },
   {
-    key: "deductWithholdingTax" as const,
-    label: "Withholding Tax",
-    description: "Bureau of Internal Revenue withholding tax (Default: OFF)",
+    key: "tax",
+    label: "Withholding Tax (BIR)",
+    description: "Bureau of Internal Revenue - TRAIN Law progressive brackets",
+    details: "Annual: ₱0-250k = 0% | ₱250k-400k = 15% | ₱400k+ = 20-35%",
     icon: Receipt,
     color: "#f59e0b",
-    defaultValue: false,
+    rate: "TRAIN",
   },
 ];
 
 export default function MuiDeductionSettings() {
   const theme = useTheme();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [settings, setSettings] = useState<DeductionSettings | null>(null);
+  const [, setLocation] = useLocation();
 
-  const { data: settingsData, isLoading } = useQuery<{ settings: DeductionSettings }>({
+  const { isLoading } = useQuery({
     queryKey: ["/api/deduction-settings"],
-    refetchInterval: 5000, // Poll every 5 seconds for real-time updates
-    refetchOnWindowFocus: true,
-    refetchIntervalInBackground: true,
+    refetchInterval: 30000,
   });
-
-  useEffect(() => {
-    if (settingsData?.settings) {
-      setSettings(settingsData.settings);
-    }
-  }, [settingsData]);
-
-  const updateMutation = useMutation({
-    mutationFn: async (updatedSettings: Partial<DeductionSettings>) => {
-      if (!settings?.id) throw new Error("Settings not loaded");
-      const response = await apiRequest(
-        "PUT",
-        `/api/deduction-settings/${settings.id}`,
-        updatedSettings
-      );
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/deduction-settings"] });
-      toast({
-        title: "Settings Updated",
-        description: "Deduction settings have been saved successfully.",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update settings",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleToggle = (field: keyof DeductionSettings, value: boolean) => {
-    if (!settings) return;
-    setSettings({ ...settings, [field]: value });
-  };
-
-  const handleSave = () => {
-    if (!settings) return;
-    updateMutation.mutate({
-      deductSSS: settings.deductSSS,
-      deductPhilHealth: settings.deductPhilHealth,
-      deductPagibig: settings.deductPagibig,
-      deductWithholdingTax: settings.deductWithholdingTax,
-    });
-  };
 
   if (isLoading) {
     return (
@@ -148,7 +91,7 @@ export default function MuiDeductionSettings() {
   }
 
   return (
-    <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: 800, mx: "auto" }}>
+    <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: 900, mx: "auto" }}>
       {/* Header */}
       <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 4 }}>
         <Box
@@ -156,160 +99,195 @@ export default function MuiDeductionSettings() {
             width: 48,
             height: 48,
             borderRadius: 3,
-            background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
+            background: `linear-gradient(135deg, ${theme.palette.success.main}, ${theme.palette.success.dark})`,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            boxShadow: `0 4px 16px ${alpha(theme.palette.primary.main, 0.3)}`,
+            boxShadow: `0 4px 16px ${alpha(theme.palette.success.main, 0.3)}`,
           }}
         >
-          <SettingsIcon sx={{ color: "white" }} />
+          <CheckCircle sx={{ color: "white" }} />
         </Box>
         <Box>
           <Typography variant="h5" fontWeight={700}>
-            Payroll Deduction Settings
+            Mandatory Deductions
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Configure which deductions are automatically applied to employee payroll
+            Philippine government contributions automatically applied per 2025 law
           </Typography>
         </Box>
       </Box>
 
-      {/* Settings Card */}
+      {/* Compliance Banner */}
+      <Alert
+        severity="success"
+        icon={<CheckCircle fontSize="inherit" />}
+        sx={{
+          mb: 4,
+          borderRadius: 3,
+          "& .MuiAlert-message": { width: "100%" },
+        }}
+      >
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
+          <Box>
+            <Typography fontWeight={600} gutterBottom>
+              ✅ Mandatory Deductions Auto-Applied
+            </Typography>
+            <Typography variant="body2">
+              SSS, PhilHealth, Pag-IBIG, and BIR withholding tax are automatically calculated
+              using official 2025 government rate tables. No manual configuration required.
+            </Typography>
+          </Box>
+          <Chip
+            label="Compliant"
+            color="success"
+            size="small"
+            sx={{ fontWeight: 600 }}
+          />
+        </Box>
+      </Alert>
+
+      {/* Mandatory Deductions Info Cards */}
       <Card
         elevation={0}
         sx={{
           borderRadius: 4,
-          border: `1px solid ${'rgba(255, 255, 255, 0.02)'}`,
+          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
           overflow: "hidden",
         }}
       >
         <CardHeader
           title={
             <Typography variant="h6" fontWeight={600}>
-              Mandatory Deductions
+              2025 Contribution Rates
             </Typography>
           }
           subheader={
             <Typography variant="body2" color="text.secondary">
-              Enable or disable automatic deductions for government contributions and taxes
+              Based on SSS CI-2024-006, PhilHealth PA2025-0002, Pag-IBIG Circular 460, BIR RR 11-2018
             </Typography>
           }
           sx={{
             bgcolor: alpha(theme.palette.primary.main, 0.03),
-            borderBottom: `1px solid ${'rgba(255, 255, 255, 0.02)'}`,
+            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
           }}
         />
-        <CardContent sx={{ p: 3 }}>
-          <Stack spacing={0} divider={<Divider sx={{ my: 0 }} />}>
-            {deductionItems.map((item) => {
+        <CardContent sx={{ p: 0 }}>
+          <Stack spacing={0} divider={<Divider />}>
+            {mandatoryDeductions.map((item) => {
               const Icon = item.icon;
-              const isEnabled = settings?.[item.key] ?? item.defaultValue;
 
               return (
                 <Box
                   key={item.key}
                   sx={{
                     display: "flex",
-                    alignItems: "center",
+                    alignItems: "flex-start",
                     justifyContent: "space-between",
-                    py: 2.5,
-                    px: 1,
-                    borderRadius: 2,
+                    p: 3,
                     transition: "background-color 0.2s",
                     "&:hover": {
-                      bgcolor: alpha(theme.palette.action.hover, 0.5),
+                      bgcolor: alpha(theme.palette.action.hover, 0.3),
                     },
                   }}
                 >
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                  <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2, flex: 1 }}>
                     <Box
                       sx={{
-                        width: 44,
-                        height: 44,
+                        width: 48,
+                        height: 48,
                         borderRadius: 2.5,
                         bgcolor: alpha(item.color, 0.1),
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
+                        flexShrink: 0,
                       }}
                     >
-                      <Icon sx={{ color: item.color, fontSize: 22 }} />
+                      <Icon sx={{ color: item.color, fontSize: 24 }} />
                     </Box>
-                    <Box>
-                      <Typography variant="subtitle1" fontWeight={600}>
-                        {item.label}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
+                    <Box sx={{ flex: 1 }}>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
+                        <Typography variant="subtitle1" fontWeight={600}>
+                          {item.label}
+                        </Typography>
+                        <Chip
+                          label={item.rate}
+                          size="small"
+                          sx={{
+                            bgcolor: alpha(item.color, 0.1),
+                            color: item.color,
+                            fontWeight: 600,
+                            fontSize: "0.75rem",
+                          }}
+                        />
+                      </Box>
+                      <Typography variant="body2" color="text.secondary" gutterBottom>
                         {item.description}
+                      </Typography>
+                      <Typography variant="caption" color="text.disabled">
+                        {item.details}
                       </Typography>
                     </Box>
                   </Box>
-                  <Switch
-                    checked={isEnabled}
-                    onChange={(e) => handleToggle(item.key, e.target.checked)}
-                    color="primary"
-                    sx={{
-                      "& .MuiSwitch-switchBase.Mui-checked": {
-                        color: item.color,
-                        "&:hover": {
-                          bgcolor: alpha(item.color, 0.1),
-                        },
-                      },
-                      "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
-                        bgcolor: item.color,
-                      },
-                    }}
+                  <Chip
+                    icon={<CheckCircle sx={{ fontSize: 16 }} />}
+                    label="Active"
+                    size="small"
+                    color="success"
+                    variant="outlined"
+                    sx={{ mt: 0.5 }}
                   />
                 </Box>
               );
             })}
           </Stack>
-
-          <Divider sx={{ my: 3 }} />
-
-          <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-            <Button
-              variant="contained"
-              onClick={handleSave}
-              disabled={updateMutation.isPending}
-              startIcon={
-                updateMutation.isPending ? (
-                  <CircularProgress size={18} color="inherit" />
-                ) : (
-                  <SaveIcon />
-                )
-              }
-              sx={{
-                px: 4,
-                py: 1.2,
-                borderRadius: 2.5,
-                fontWeight: 600,
-                textTransform: "none",
-                boxShadow: `0 4px 14px ${alpha(theme.palette.primary.main, 0.3)}`,
-              }}
-            >
-              {updateMutation.isPending ? "Saving..." : "Save Settings"}
-            </Button>
-          </Box>
         </CardContent>
       </Card>
 
-      {/* Info Alert */}
+      {/* Admin Link to Rate Tables */}
       <Alert
         severity="info"
+        icon={<Info fontSize="inherit" />}
+        sx={{ mt: 3, borderRadius: 3 }}
+        action={
+          <Button
+            color="inherit"
+            size="small"
+            endIcon={<OpenInNew sx={{ fontSize: 16 }} />}
+            onClick={() => setLocation("/admin/deduction-rates")}
+          >
+            View Tables
+          </Button>
+        }
+      >
+        <Typography variant="body2">
+          <strong>Admins:</strong> Rate tables can be viewed and updated in Settings → Deduction Rates.
+          Changes apply to future payroll calculations only.
+        </Typography>
+      </Alert>
+
+      {/* Additional Info */}
+      <Card
+        elevation={0}
         sx={{
           mt: 3,
           borderRadius: 3,
-          "& .MuiAlert-icon": {
-            alignItems: "center",
-          },
+          bgcolor: alpha(theme.palette.warning.main, 0.05),
+          border: `1px solid ${alpha(theme.palette.warning.main, 0.2)}`,
         }}
       >
-        <Typography variant="body2">
-          Changes will apply to new payroll calculations. Existing payroll entries will not be affected.
-        </Typography>
-      </Alert>
+        <CardContent>
+          <Typography variant="subtitle2" color="warning.main" fontWeight={600} gutterBottom>
+            Per-Employee Deductions
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            For employee-specific deductions (SSS Loan, Pag-IBIG Loan, Cash Advance, Other recurring),
+            go to <strong>Employees → Select Employee → Deductions</strong>. These are added on top of
+            mandatory government contributions.
+          </Typography>
+        </CardContent>
+      </Card>
     </Box>
   );
 }

@@ -1082,14 +1082,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const restDayPay = payCalculation.restDayPay;
         const grossPay = payCalculation.totalGrossPay;
 
-        // Get deduction settings for the branch
-        const deductionSettings = await storage.getDeductionSettings(branchId);
-        // Coerce nullable booleans to strict booleans expected by deduction calculator
+        // COMPLIANCE: Mandatory Philippine government deductions are ALWAYS applied
+        // Per DOLE/BIR/SSS/PhilHealth/Pag-IBIG 2025 regulations
+        // These cannot be toggled off - they are required by law
         const settings = {
-          deductSSS: Boolean(deductionSettings?.deductSSS),
-          deductPhilHealth: Boolean(deductionSettings?.deductPhilHealth),
-          deductPagibig: Boolean(deductionSettings?.deductPagibig),
-          deductWithholdingTax: Boolean(deductionSettings?.deductWithholdingTax),
+          deductSSS: true,           // SSS contribution - MANDATORY
+          deductPhilHealth: true,    // PhilHealth contribution - MANDATORY
+          deductPagibig: true,       // Pag-IBIG/HDMF contribution - MANDATORY
+          deductWithholdingTax: true, // BIR withholding tax - MANDATORY (threshold-based)
         };
 
         // Calculate monthly equivalent salary for deduction calculations

@@ -132,8 +132,6 @@ export default function MuiPayrollManagement() {
     setPayslipViewerOpen(true);
   };
 
-  // Handle period type changeType] = useState<PeriodType>('2weeks');
-
   // Handle period type change
   const handlePeriodTypeChange = (type: PeriodType) => {
     setPeriodType(type);
@@ -190,8 +188,8 @@ export default function MuiPayrollManagement() {
       toast({ title: "✓ Payroll Period Created", description: "New payroll period is ready" });
       queryClient.invalidateQueries({ queryKey: ["payroll-periods"] });
       setIsCreateDialogOpen(false);
-      setStartDate("");
-      setEndDate("");
+      setStartDate(null);
+      setEndDate(null);
     },
     onError: (error: any) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -339,16 +337,6 @@ export default function MuiPayrollManagement() {
           >
             <Icon sx={{ color, fontSize: 24 }} />
           </Box>
-          <Chip
-            label="+12%"
-            size="small"
-            sx={{
-              bgcolor: alpha(theme.palette.success.main, 0.1),
-              color: theme.palette.success.main,
-              fontWeight: 600,
-              fontSize: "0.7rem",
-            }}
-          />
         </Box>
         <Typography variant="body2" color="text.secondary" fontWeight={500}>
           {title}

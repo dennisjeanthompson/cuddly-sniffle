@@ -720,9 +720,9 @@ export default function MuiEmployees() {
             </Grid>
             <Grid size={{ xs: 6, lg: 3 }}>
               <StatCard
-                title="Hours This Month"
+                title={`Hours This Month`}
                 value={stats.totalHoursThisMonth.toLocaleString('en-PH', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                subtitle="Total team hours"
+                subtitle={format(new Date(), 'MMMM yyyy')}
                 icon={<ClockIcon />}
                 color="info"
               />
@@ -731,12 +731,13 @@ export default function MuiEmployees() {
               <StatCard
                 title="Monthly Payroll"
                 value={`₱${stats.totalPayrollThisMonth.toLocaleString('en-PH', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
-                subtitle="This month estimate"
+                subtitle={`${format(new Date(), 'MMMM yyyy')} estimate`}
                 icon={<DollarIcon />}
                 color="warning"
               />
             </Grid>
           </Grid>
+
 
           {/* Filters */}
           <Paper elevation={0} sx={{ p: 2.5, borderRadius: 3 }}>

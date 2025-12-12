@@ -130,6 +130,7 @@ const EnhancedScheduler = () => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' | 'info' | 'warning' });
   const [rosterOpen, setRosterOpen] = useState(false);
   const [currentWeekStart, setCurrentWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const [visibleRangeEnd, setVisibleRangeEnd] = useState(() => endOfWeek(new Date(), { weekStartsOn: 1 }));
 
   // Feature 6: Published Toggle
   const [isPublished, setIsPublished] = useState(false);
@@ -555,20 +556,29 @@ const EnhancedScheduler = () => {
 
   // Copy Week Functions
   const handleCopyWeek = useCallback(() => {
-    const weekEnd = endOfWeek(currentWeekStart, { weekStartsOn: 1 });
+    // Use the actual visible range from the calendar instead of week calculation
     const weekShifts = shifts.filter(shift => {
       const shiftDate = new Date(shift.startTime);
-      return shiftDate >= currentWeekStart && shiftDate <= weekEnd;
+      return shiftDate >= currentWeekStart && shiftDate <= visibleRangeEnd;
     });
+    
+    if (weekShifts.length === 0) {
+      setSnackbar({ 
+        open: true, 
+        message: 'No shifts found in the visible date range to copy.', 
+        severity: 'warning' 
+      });
+      return;
+    }
     
     setClipboardWeek(weekShifts);
     setClipboardWeekStart(currentWeekStart);
     setSnackbar({ 
       open: true, 
-      message: `Copied ${weekShifts.length} shifts! Navigate to target week and click Paste Week.`, 
+      message: `Copied ${weekShifts.length} shifts from ${format(currentWeekStart, 'MMM d')} - ${format(visibleRangeEnd, 'MMM d')}! Navigate to target week and click Paste Week.`, 
       severity: 'info' 
     });
-  }, [shifts, currentWeekStart]);
+  }, [shifts, currentWeekStart, visibleRangeEnd]);
 
   const handlePasteWeek = useCallback(async () => {
     if (!clipboardWeek || !clipboardWeekStart) {
@@ -659,9 +669,17 @@ const EnhancedScheduler = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedShift, handleCopyShift, handlePrint]);
 
-  // Track calendar date changes
+  // Track calendar date changes - store both start and end of visible range
   const handleDatesSet = useCallback((info: any) => {
-    setCurrentWeekStart(startOfWeek(info.start, { weekStartsOn: 1 }));
+    // Use info.start and info.end directly as the visible range
+    // info.start is the first visible date, info.end is the day after the last visible date
+    const rangeStart = new Date(info.start);
+    const rangeEnd = new Date(info.end);
+    rangeEnd.setDate(rangeEnd.getDate() - 1); // Adjust since info.end is exclusive
+    rangeEnd.setHours(23, 59, 59, 999);
+    
+    setCurrentWeekStart(rangeStart);
+    setVisibleRangeEnd(rangeEnd);
   }, []);
 
   if (shiftsLoading || employeesLoading) {

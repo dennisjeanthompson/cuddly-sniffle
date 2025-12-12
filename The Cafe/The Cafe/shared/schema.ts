@@ -199,6 +199,21 @@ export const archivedPayrollPeriods = pgTable("archived_payroll_periods", {
   entriesSnapshot: text("entries_snapshot"),
 });
 
+// Audit logs for tracking deduction and rate changes (compliance requirement)
+export const auditLogs = pgTable("audit_logs", {
+  id: text("id").primaryKey(),
+  action: text("action").notNull(), // 'deduction_change', 'rate_update', 'payroll_process'
+  entityType: text("entity_type").notNull(), // 'employee', 'deduction_rate', 'payroll_entry'
+  entityId: text("entity_id").notNull(),
+  userId: text("user_id").references(() => users.id).notNull(), // Who made the change
+  oldValues: text("old_values"), // JSON string of previous values
+  newValues: text("new_values"), // JSON string of new values
+  reason: text("reason"), // Optional reason/note for the change
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Insert Schemas
 export const insertBranchSchema = createInsertSchema(branches).omit({
   id: true,
@@ -288,6 +303,11 @@ export const insertArchivedPayrollPeriodSchema = createInsertSchema(archivedPayr
   archivedAt: true,
 });
 
+export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
 export interface DashboardStats {
   stats: {
     late: number;
@@ -310,6 +330,7 @@ export type DeductionSettings = typeof deductionSettings.$inferSelect;
 export type DeductionRate = typeof deductionRates.$inferSelect;
 export type Holiday = typeof holidays.$inferSelect;
 export type ArchivedPayrollPeriod = typeof archivedPayrollPeriods.$inferSelect;
+export type AuditLog = typeof auditLogs.$inferSelect;
 
 export type InsertBranch = z.infer<typeof insertBranchSchema>;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -324,3 +345,4 @@ export type InsertDeductionSettings = z.infer<typeof insertDeductionSettingsSche
 export type InsertDeductionRate = z.infer<typeof insertDeductionRatesSchema>;
 export type InsertHoliday = z.infer<typeof insertHolidaySchema>;
 export type InsertArchivedPayrollPeriod = z.infer<typeof insertArchivedPayrollPeriodSchema>;
+export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;

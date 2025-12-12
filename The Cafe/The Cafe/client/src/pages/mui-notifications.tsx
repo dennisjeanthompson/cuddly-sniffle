@@ -313,6 +313,7 @@ export default function MuiNotifications() {
         </ListItemAvatar>
         <ListItemText
           sx={{ ml: 1 }}
+          secondaryTypographyProps={{ component: "div" }}
           primary={
             <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.5 }}>
               <Typography 

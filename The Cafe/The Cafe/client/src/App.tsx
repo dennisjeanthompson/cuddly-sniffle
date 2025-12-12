@@ -87,7 +87,11 @@ function LoadingScreen() {
 
 // Lazy-loaded route wrapper with loading fallback
 function RouteLoader({ children }: { children: React.ReactNode }) {
-  return <Suspense fallback={<LoadingScreen />}>{children}</Suspense>;
+  return (
+    <ErrorBoundary>
+      <Suspense fallback={<LoadingScreen />}>{children}</Suspense>
+    </ErrorBoundary>
+  );
 }
 
 // Desktop Layout with MUI Components

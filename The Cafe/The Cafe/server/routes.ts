@@ -1092,17 +1092,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
           deductWithholdingTax: Boolean(deductionSettings?.deductWithholdingTax),
         };
 
-        // Calculate monthly salary for deduction calculations
-        // Assuming 4.33 weeks per month average
-        const weeksInPeriod = Math.ceil(
-          (new Date(period.endDate).getTime() - new Date(period.startDate).getTime()) /
-          (7 * 24 * 60 * 60 * 1000)
-        );
-        const monthlyBasicSalary = (basicPay / weeksInPeriod) * 4.33;
+        // Calculate monthly equivalent salary for deduction calculations
+        // For Philippine statutory deductions (SSS/PhilHealth/Pag-IBIG), we need monthly basis
+        const periodStartDate = new Date(period.startDate);
+        const periodEndDate = new Date(period.endDate);
+        const daysInPeriod = Math.ceil((periodEndDate.getTime() - periodStartDate.getTime()) / (24 * 60 * 60 * 1000)) + 1;
+        
+        // Determine if this is approximately a full month period (28-31 days)
+        // For full month periods, use actual gross pay as the monthly basis
+        // For partial periods (e.g., 2-week payroll), prorate to monthly
+        let monthlyBasicSalary: number;
+        if (daysInPeriod >= 28 && daysInPeriod <= 31) {
+          // Full month period - use actual gross pay as monthly salary
+          monthlyBasicSalary = grossPay;
+        } else {
+          // Partial period - prorate to monthly (assuming 30 days/month average)
+          monthlyBasicSalary = (grossPay / daysInPeriod) * 30;
+        }
 
         // Import deduction calculator
         const { calculateAllDeductions } = await import('./utils/deductions');
         const deductionBreakdown = await calculateAllDeductions(monthlyBasicSalary, settings);
+
 
         // Calculate total deductions
         const sssContribution = deductionBreakdown.sssContribution;

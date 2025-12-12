@@ -1,6 +1,7 @@
 /**
  * Philippine Payroll Deduction Calculations
- * Based on 2024 contribution tables for SSS, PhilHealth, Pag-IBIG, and BIR
+ * Based on 2025 contribution tables for SSS, PhilHealth, Pag-IBIG, and BIR
+ * Updated to reflect January 2025 rate changes
  * Now uses database-configurable rates for admin flexibility
  */
 
@@ -15,7 +16,8 @@ export interface DeductionBreakdown {
 
 /**
  * Calculate SSS contribution (employee share)
- * Based on SSS contribution table from database
+ * 2025 Rate: 5% employee share of Monthly Salary Credit (MSC)
+ * MSC Range: ₱5,000 - ₱35,000
  */
 export async function calculateSSS(monthlyBasicSalary: number): Promise<number> {
   try {
@@ -26,17 +28,39 @@ export async function calculateSSS(monthlyBasicSalary: number): Promise<number> 
       .filter(rate => rate.isActive)
       .sort((a, b) => parseFloat(a.minSalary) - parseFloat(b.minSalary));
 
-    for (const bracket of activeRates) {
-      const min = parseFloat(bracket.minSalary);
-      const max = bracket.maxSalary ? parseFloat(bracket.maxSalary) : Infinity;
+    // If database has rates configured, use them
+    if (activeRates.length > 0) {
+      for (const bracket of activeRates) {
+        const min = parseFloat(bracket.minSalary);
+        const max = bracket.maxSalary ? parseFloat(bracket.maxSalary) : Infinity;
 
-      if (monthlyBasicSalary >= min && monthlyBasicSalary <= max) {
-        // Return fixed contribution amount
-        return bracket.employeeContribution ? parseFloat(bracket.employeeContribution) : 0;
+        if (monthlyBasicSalary >= min && monthlyBasicSalary <= max) {
+          // Return fixed contribution amount if specified
+          if (bracket.employeeContribution) {
+            return parseFloat(bracket.employeeContribution);
+          }
+          // Otherwise calculate based on rate
+          if (bracket.employeeRate) {
+            return monthlyBasicSalary * (parseFloat(bracket.employeeRate) / 100);
+          }
+        }
       }
     }
 
-    return 0;
+    // Fallback: Use 2025 SSS rates if database not configured
+    // Employee share = 5% of MSC
+    // MSC floor = ₱5,000, ceiling = ₱35,000
+    const SSS_EMPLOYEE_RATE = 0.05; // 5% employee share
+    const SSS_MSC_FLOOR = 5000;
+    const SSS_MSC_CEILING = 35000;
+    
+    // Apply MSC floor and ceiling
+    let msc = monthlyBasicSalary;
+    if (msc < SSS_MSC_FLOOR) msc = SSS_MSC_FLOOR;
+    if (msc > SSS_MSC_CEILING) msc = SSS_MSC_CEILING;
+    
+    const contribution = msc * SSS_EMPLOYEE_RATE;
+    return Math.round(contribution * 100) / 100;
   } catch (error) {
     console.error('Error calculating SSS:', error);
     return 0;
@@ -45,7 +69,8 @@ export async function calculateSSS(monthlyBasicSalary: number): Promise<number> 
 
 /**
  * Calculate PhilHealth contribution (employee share)
- * Based on PhilHealth contribution table from database
+ * 2025 Rate: 2.5% employee share (5% total, split 50-50)
+ * Salary floor: ₱10,000, ceiling: ₱100,000
  */
 export async function calculatePhilHealth(monthlyBasicSalary: number): Promise<number> {
   try {
@@ -54,21 +79,34 @@ export async function calculatePhilHealth(monthlyBasicSalary: number): Promise<n
     // Get the active rate (should be only one)
     const activeRate = philHealthRates.find(rate => rate.isActive);
 
-    if (!activeRate) return 0;
+    if (activeRate) {
+      const minSalary = parseFloat(activeRate.minSalary);
+      const maxSalary = activeRate.maxSalary ? parseFloat(activeRate.maxSalary) : 100000;
+      const employeeRate = activeRate.employeeRate ? parseFloat(activeRate.employeeRate) / 100 : 0.025;
 
-    const minSalary = parseFloat(activeRate.minSalary);
-    const maxSalary = activeRate.maxSalary ? parseFloat(activeRate.maxSalary) : Infinity;
-    const employeeRate = activeRate.employeeRate ? parseFloat(activeRate.employeeRate) / 100 : 0;
+      let baseSalary = monthlyBasicSalary;
 
+      // Apply floor and ceiling
+      if (baseSalary < minSalary) baseSalary = minSalary;
+      if (baseSalary > maxSalary) baseSalary = maxSalary;
+
+      const employeeContribution = baseSalary * employeeRate;
+      return Math.round(employeeContribution * 100) / 100;
+    }
+
+    // Fallback: Use 2025 PhilHealth rates if database not configured
+    // Employee share = 2.5% (half of 5% total)
+    // Salary floor = ₱10,000, ceiling = ₱100,000
+    const PHILHEALTH_EMPLOYEE_RATE = 0.025; // 2.5% employee share
+    const PHILHEALTH_FLOOR = 10000;
+    const PHILHEALTH_CEILING = 100000;
+    
     let baseSalary = monthlyBasicSalary;
-
-    // Apply floor and ceiling
-    if (baseSalary < minSalary) baseSalary = minSalary;
-    if (baseSalary > maxSalary) baseSalary = maxSalary;
-
-    const employeeContribution = baseSalary * employeeRate;
-
-    return Math.round(employeeContribution * 100) / 100; // Round to 2 decimal places
+    if (baseSalary < PHILHEALTH_FLOOR) baseSalary = PHILHEALTH_FLOOR;
+    if (baseSalary > PHILHEALTH_CEILING) baseSalary = PHILHEALTH_CEILING;
+    
+    const contribution = baseSalary * PHILHEALTH_EMPLOYEE_RATE;
+    return Math.round(contribution * 100) / 100;
   } catch (error) {
     console.error('Error calculating PhilHealth:', error);
     return 0;
@@ -77,7 +115,7 @@ export async function calculatePhilHealth(monthlyBasicSalary: number): Promise<n
 
 /**
  * Calculate Pag-IBIG contribution (employee share)
- * Based on Pag-IBIG (HDMF) contribution table from database
+ * 2025 Rate: 2% of monthly basic salary, maximum ₱100
  */
 export async function calculatePagibig(monthlyBasicSalary: number): Promise<number> {
   try {
@@ -88,25 +126,34 @@ export async function calculatePagibig(monthlyBasicSalary: number): Promise<numb
       .filter(rate => rate.isActive)
       .sort((a, b) => parseFloat(a.minSalary) - parseFloat(b.minSalary));
 
-    for (const bracket of activeRates) {
-      const min = parseFloat(bracket.minSalary);
-      const max = bracket.maxSalary ? parseFloat(bracket.maxSalary) : Infinity;
+    if (activeRates.length > 0) {
+      for (const bracket of activeRates) {
+        const min = parseFloat(bracket.minSalary);
+        const max = bracket.maxSalary ? parseFloat(bracket.maxSalary) : Infinity;
 
-      if (monthlyBasicSalary >= min && monthlyBasicSalary <= max) {
-        const rate = bracket.employeeRate ? parseFloat(bracket.employeeRate) / 100 : 0;
-        const contribution = monthlyBasicSalary * rate;
+        if (monthlyBasicSalary >= min && monthlyBasicSalary <= max) {
+          const rate = bracket.employeeRate ? parseFloat(bracket.employeeRate) / 100 : 0.02;
+          const contribution = monthlyBasicSalary * rate;
 
-        // Maximum employee contribution is ₱100
-        return Math.min(contribution, 100);
+          // Maximum employee contribution is ₱100
+          return Math.min(contribution, 100);
+        }
       }
     }
 
-    return 0;
+    // Fallback: Use 2025 Pag-IBIG rates if database not configured
+    // Employee share = 2% of monthly salary, capped at ₱100
+    const PAGIBIG_RATE = 0.02; // 2% employee share
+    const PAGIBIG_MAX = 100; // Maximum ₱100 contribution
+    
+    const contribution = monthlyBasicSalary * PAGIBIG_RATE;
+    return Math.min(Math.round(contribution * 100) / 100, PAGIBIG_MAX);
   } catch (error) {
     console.error('Error calculating Pag-IBIG:', error);
     return 0;
   }
 }
+
 
 /**
  * Calculate withholding tax based on BIR tax table from database

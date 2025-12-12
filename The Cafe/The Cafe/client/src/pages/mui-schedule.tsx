@@ -580,22 +580,57 @@ const EnhancedScheduler = () => {
     
     setSnackbar({ open: true, message: `Pasting ${clipboardWeek.length} shifts...`, severity: 'info' });
 
+    let successCount = 0;
+    let skippedCount = 0;
+    let errorCount = 0;
+
     for (const shift of clipboardWeek) {
       const newStart = new Date(new Date(shift.startTime).getTime() + daysDiff);
       const newEnd = new Date(new Date(shift.endTime).getTime() + daysDiff);
       
-      await createShiftMutation.mutateAsync({
-        userId: shift.userId,
-        branchId: shift.branchId,
-        position: shift.position || 'Staff',
-        startTime: newStart.toISOString(),
-        endTime: newEnd.toISOString(),
-        notes: shift.notes,
-      });
+      // Check for overlap before creating
+      const hasOverlap = checkOverlap(shift.userId, newStart.toISOString(), newEnd.toISOString());
+      
+      if (hasOverlap) {
+        skippedCount++;
+        continue; // Skip this shift due to overlap
+      }
+
+      try {
+        await createShiftMutation.mutateAsync({
+          userId: shift.userId,
+          branchId: shift.branchId,
+          position: shift.position || 'Staff',
+          startTime: newStart.toISOString(),
+          endTime: newEnd.toISOString(),
+          notes: shift.notes,
+        });
+        successCount++;
+      } catch (error) {
+        // Handle server-side conflict detection (e.g., 409 status)
+        errorCount++;
+        console.warn('Failed to paste shift:', error);
+      }
     }
 
-    setSnackbar({ open: true, message: 'Week pasted successfully!', severity: 'success' });
-  }, [clipboardWeek, clipboardWeekStart, currentWeekStart, createShiftMutation]);
+    // Show summary message
+    if (skippedCount > 0 || errorCount > 0) {
+      const parts = [];
+      if (successCount > 0) parts.push(`${successCount} created`);
+      if (skippedCount > 0) parts.push(`${skippedCount} skipped (conflicts)`);
+      if (errorCount > 0) parts.push(`${errorCount} failed`);
+      setSnackbar({ 
+        open: true, 
+        message: `Week paste complete: ${parts.join(', ')}`, 
+        severity: skippedCount > 0 || errorCount > 0 ? 'warning' : 'success' 
+      });
+    } else {
+      setSnackbar({ open: true, message: `Week pasted successfully! ${successCount} shifts created.`, severity: 'success' });
+    }
+    
+    // Refresh shifts data
+    queryClient.invalidateQueries({ queryKey: ['shifts'] });
+  }, [clipboardWeek, clipboardWeekStart, currentWeekStart, createShiftMutation, checkOverlap, queryClient]);
 
   // Feature 2: Check overlap when creating/editing
   useEffect(() => {

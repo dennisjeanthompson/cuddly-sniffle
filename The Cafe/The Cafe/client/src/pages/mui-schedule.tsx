@@ -399,11 +399,16 @@ const EnhancedScheduler = () => {
       return;
     }
 
-    updateShiftMutation.mutate({
-      id: event.id,
-      startTime: event.startStr,
-      endTime: event.endStr,
-    });
+    try {
+      await updateShiftMutation.mutateAsync({
+        id: event.id,
+        startTime: event.startStr,
+        endTime: event.endStr,
+      });
+    } catch (error) {
+      // Revert the change on the calendar UI if the server update fails
+      info.revert();
+    }
   }, [updateShiftMutation, checkOverlap, isPublished]);
 
   const handleEventResize = useCallback((info: any) => {
@@ -427,11 +432,15 @@ const EnhancedScheduler = () => {
       return;
     }
 
-    updateShiftMutation.mutate({
-      id: event.id,
-      startTime: event.startStr,
-      endTime: event.endStr,
-    });
+    try {
+      await updateShiftMutation.mutateAsync({
+        id: event.id,
+        startTime: event.startStr,
+        endTime: event.endStr,
+      });
+    } catch (error) {
+       info.revert();
+    }
   }, [updateShiftMutation, checkOverlap, isPublished]);
 
   const handleEventClick = useCallback((info: any) => {

@@ -326,18 +326,32 @@ function calculateAllScheduledHours(shifts: any[]): number {
   return totalHours;
 }
 
-// Get all employees with their current month hours (for employee table)
+// Get all employees with their hours for a specified period (for employee table)
+// Accepts optional startDate and endDate query params, defaults to current month
 router.get('/api/hours/all-employees', requireAuth, requireRole(['manager']), async (req, res) => {
   try {
     const branchId = req.session.user!.branchId;
-    const now = new Date();
-    const monthStart = startOfMonth(now);
-    const monthEnd = endOfMonth(now);
+    const { startDate, endDate } = req.query;
+    
+    // Use provided dates or default to current month
+    let periodStart: Date;
+    let periodEnd: Date;
+    
+    if (startDate && endDate) {
+      periodStart = new Date(startDate as string);
+      periodEnd = new Date(endDate as string);
+      // Set end date to end of day
+      periodEnd.setHours(23, 59, 59, 999);
+    } else {
+      const now = new Date();
+      periodStart = startOfMonth(now);
+      periodEnd = endOfMonth(now);
+    }
 
     const allEmployees = await storage.getUsersByBranch(branchId);
     
     const employeesWithHours = await Promise.all(allEmployees.map(async (employee) => {
-      const shifts = await storage.getShiftsByUser(employee.id, monthStart, monthEnd);
+      const shifts = await storage.getShiftsByUser(employee.id, periodStart, periodEnd);
       // Show ALL scheduled shifts (not just completed) for employee grid/profile view
       const totalHours = calculateAllScheduledHours(shifts);
 

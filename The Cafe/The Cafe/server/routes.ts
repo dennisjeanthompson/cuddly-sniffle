@@ -789,19 +789,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
-  // Employee statistics route
+  // Employee statistics route - accepts optional startDate and endDate for month selection
   app.get("/api/employees/stats", requireAuth, requireRole(["manager"]), async (req, res) => {
     const branchId = req.user!.branchId;
     const users = await storage.getUsersByBranch(branchId);
+    const { startDate, endDate } = req.query;
 
     // Calculate statistics
     const totalEmployees = users.length;
     const activeEmployees = users.filter(user => user.isActive).length;
 
-    // Calculate total hours this month from shifts
-    const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+    // Use provided dates or default to current month
+    let monthStart: Date;
+    let monthEnd: Date;
+    
+    if (startDate && endDate) {
+      monthStart = new Date(startDate as string);
+      monthEnd = new Date(endDate as string);
+      monthEnd.setHours(23, 59, 59, 999);
+    } else {
+      const now = new Date();
+      monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+    }
 
     let totalHoursThisMonth = 0;
     for (const user of users) {
@@ -849,6 +859,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       averagePerformance,
     });
   });
+
 
   // Employee performance data
   app.get("/api/employees/performance", requireAuth, requireRole(["manager"]), async (req, res) => {

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { format } from "date-fns";
+import { format, startOfMonth, endOfMonth, subMonths, addMonths } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { isManager } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -91,6 +91,9 @@ import {
   Download as DownloadIcon,
   Upload as UploadIcon,
   Schedule as ScheduleIcon,
+  ChevronLeft as ChevronLeftIcon,
+  ChevronRight as ChevronRightIcon,
+  CalendarMonth as CalendarIcon,
 } from "@mui/icons-material";
 
 // MUI X Data Grid
@@ -177,6 +180,9 @@ export default function MuiEmployees() {
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  
+  // Month selector state - allows viewing stats for any month
+  const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
 
   // Dialog states
   const [formDialogOpen, setFormDialogOpen] = useState(false);
@@ -204,9 +210,16 @@ export default function MuiEmployees() {
     }
   }, [managerRole, setLocation]);
 
-  // Queries with real-time updates
+  // Queries with real-time updates - now accepts month parameter
+  const monthStart = format(startOfMonth(selectedMonth), 'yyyy-MM-dd');
+  const monthEnd = format(endOfMonth(selectedMonth), 'yyyy-MM-dd');
+  
   const { data: employeesResponse, isLoading: employeesLoading, refetch: refetchEmployees } = useQuery<{ employees: Employee[] }>({
-    queryKey: ["/api/hours/all-employees"],
+    queryKey: ["/api/hours/all-employees", monthStart, monthEnd],
+    queryFn: async () => {
+      const response = await apiRequest("GET", `/api/hours/all-employees?startDate=${monthStart}&endDate=${monthEnd}`);
+      return response.json();
+    },
     enabled: managerRole,
     refetchInterval: 5000, // Poll every 5 seconds for real-time employee updates
     refetchOnWindowFocus: true,
@@ -221,9 +234,9 @@ export default function MuiEmployees() {
   });
 
   const { data: employeeStats, refetch: refetchStats } = useQuery({
-    queryKey: ["employee-stats"],
+    queryKey: ["employee-stats", monthStart, monthEnd],
     queryFn: async () => {
-      const response = await apiRequest("GET", "/api/employees/stats");
+      const response = await apiRequest("GET", `/api/employees/stats?startDate=${monthStart}&endDate=${monthEnd}`);
       return response.json();
     },
     enabled: managerRole,
@@ -688,14 +701,60 @@ export default function MuiEmployees() {
                 Manage your team members and their information
               </Typography>
             </Box>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={handleOpenAddDialog}
-              sx={{ boxShadow: 2 }}
-            >
-              Add Employee
-            </Button>
+            <Stack direction="row" spacing={2} alignItems="center">
+              {/* Month Selector */}
+              <Paper 
+                elevation={0} 
+                sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 1, 
+                  p: 0.5, 
+                  borderRadius: 2,
+                  bgcolor: 'action.hover'
+                }}
+              >
+                <IconButton 
+                  size="small" 
+                  onClick={() => setSelectedMonth(subMonths(selectedMonth, 1))}
+                  sx={{ color: 'primary.main' }}
+                >
+                  <ChevronLeftIcon />
+                </IconButton>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 1 }}>
+                  <CalendarIcon sx={{ fontSize: 18, color: 'primary.main' }} />
+                  <Typography variant="body2" fontWeight={600} sx={{ minWidth: 120, textAlign: 'center' }}>
+                    {format(selectedMonth, 'MMMM yyyy')}
+                  </Typography>
+                </Box>
+                <IconButton 
+                  size="small" 
+                  onClick={() => setSelectedMonth(addMonths(selectedMonth, 1))}
+                  sx={{ color: 'primary.main' }}
+                >
+                  <ChevronRightIcon />
+                </IconButton>
+                <Tooltip title="Go to current month">
+                  <Button 
+                    size="small" 
+                    variant="outlined"
+                    onClick={() => setSelectedMonth(new Date())}
+                    sx={{ ml: 1, minWidth: 60 }}
+                  >
+                    Today
+                  </Button>
+                </Tooltip>
+              </Paper>
+              
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={handleOpenAddDialog}
+                sx={{ boxShadow: 2 }}
+              >
+                Add Employee
+              </Button>
+            </Stack>
           </Box>
 
           {/* Stats Grid */}

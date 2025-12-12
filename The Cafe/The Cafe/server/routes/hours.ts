@@ -302,6 +302,30 @@ router.get('/api/hours/report', requireAuth, requireRole(['manager']), async (re
   }
 });
 
+// Helper function to calculate hours from ALL shifts (not just completed - for scheduling view)
+function calculateAllScheduledHours(shifts: any[]): number {
+  let totalHours = 0;
+
+  for (const shift of shifts) {
+    const startTime = shift.startTime;
+    const endTime = shift.endTime;
+
+    const startDate = new Date(startTime);
+    const endDate = new Date(endTime);
+
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      continue;
+    }
+
+    const shiftHours = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60);
+
+    if (shiftHours > 0 && shiftHours < 24) {
+      totalHours += shiftHours;
+    }
+  }
+  return totalHours;
+}
+
 // Get all employees with their current month hours (for employee table)
 router.get('/api/hours/all-employees', requireAuth, requireRole(['manager']), async (req, res) => {
   try {
@@ -314,13 +338,13 @@ router.get('/api/hours/all-employees', requireAuth, requireRole(['manager']), as
     
     const employeesWithHours = await Promise.all(allEmployees.map(async (employee) => {
       const shifts = await storage.getShiftsByUser(employee.id, monthStart, monthEnd);
-      const completedShifts = filterCompletedShifts(shifts);
-      const totalHours = calculateHoursFromShifts(shifts);
+      // Show ALL scheduled shifts (not just completed) for employee grid/profile view
+      const totalHours = calculateAllScheduledHours(shifts);
 
       return {
         ...employee,
         hoursThisMonth: Number(totalHours.toFixed(2)),
-        shiftsThisMonth: completedShifts.length,
+        shiftsThisMonth: shifts.length, // Count ALL shifts, not just completed
       };
     }));
 

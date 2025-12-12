@@ -378,7 +378,7 @@ const EnhancedScheduler = () => {
   }, [shifts, employees, timeOffBlocks]);
 
   // FullCalendar Event Handlers
-  const handleEventDrop = useCallback((info: any) => {
+  const handleEventDrop = useCallback(async (info: any) => {
     if (isPublished) {
       setSnackbar({ open: true, message: 'Switch to Draft mode to edit the schedule', severity: 'warning' });
       info.revert();
@@ -411,7 +411,7 @@ const EnhancedScheduler = () => {
     }
   }, [updateShiftMutation, checkOverlap, isPublished]);
 
-  const handleEventResize = useCallback((info: any) => {
+  const handleEventResize = useCallback(async (info: any) => {
     if (isPublished) {
       setSnackbar({ open: true, message: 'Switch to Draft mode to edit the schedule', severity: 'warning' });
       info.revert();

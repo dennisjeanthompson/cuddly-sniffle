@@ -379,8 +379,8 @@ const EnhancedScheduler = () => {
 
   // FullCalendar Event Handlers
   const handleEventDrop = useCallback((info: any) => {
-    if (!isPublished) {
-      setSnackbar({ open: true, message: 'Publish the schedule to enable drag & drop', severity: 'warning' });
+    if (isPublished) {
+      setSnackbar({ open: true, message: 'Switch to Draft mode to edit the schedule', severity: 'warning' });
       info.revert();
       return;
     }
@@ -407,8 +407,8 @@ const EnhancedScheduler = () => {
   }, [updateShiftMutation, checkOverlap, isPublished]);
 
   const handleEventResize = useCallback((info: any) => {
-    if (!isPublished) {
-      setSnackbar({ open: true, message: 'Publish the schedule to enable editing', severity: 'warning' });
+    if (isPublished) {
+      setSnackbar({ open: true, message: 'Switch to Draft mode to edit the schedule', severity: 'warning' });
       info.revert();
       return;
     }
@@ -440,8 +440,8 @@ const EnhancedScheduler = () => {
       return;
     }
 
-    if (!isPublished) {
-      setSnackbar({ open: true, message: 'Publish the schedule to enable editing', severity: 'warning' });
+    if (isPublished) {
+      setSnackbar({ open: true, message: 'Switch to Draft mode to edit the schedule', severity: 'warning' });
       return;
     }
 
@@ -452,8 +452,8 @@ const EnhancedScheduler = () => {
 
   // Feature 1: Drag-to-create (using select)
   const handleDateSelect = useCallback((info: any) => {
-    if (!isPublished) {
-      setSnackbar({ open: true, message: 'Publish the schedule to create shifts', severity: 'warning' });
+    if (isPublished) {
+      setSnackbar({ open: true, message: 'Switch to Draft mode to create shifts', severity: 'warning' });
       return;
     }
 
@@ -467,8 +467,8 @@ const EnhancedScheduler = () => {
 
   // External Drop from Employee Roster
   const handleExternalDrop = useCallback((info: any) => {
-    if (!isPublished) {
-      setSnackbar({ open: true, message: 'Publish the schedule to create shifts', severity: 'warning' });
+    if (isPublished) {
+      setSnackbar({ open: true, message: 'Switch to Draft mode to create shifts', severity: 'warning' });
       return;
     }
 
@@ -677,10 +677,11 @@ const EnhancedScheduler = () => {
               <CloseIcon />
             </IconButton>
           </Box>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Drag an employee onto the calendar to create a shift
-          </Typography>
-          <Divider sx={{ mb: 2 }} />
+          {isPublished && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Schedule is published. Switch to Draft mode to make changes.
+        </Alert>
+      )}    <Divider sx={{ mb: 2 }} />
           
           <Box ref={rosterRef} sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
             {employees.length === 0 && (
@@ -692,7 +693,7 @@ const EnhancedScheduler = () => {
               const colors = EMPLOYEE_COLORS[index % EMPLOYEE_COLORS.length];
               const displayRole = employee.position || employee.role || 'employee';
               const isInactive = employee.isActive === false;
-              const canDrag = isPublished && !isInactive;
+              const canDrag = !isPublished && !isInactive;
               
               return (
                 <Tooltip 
@@ -700,7 +701,7 @@ const EnhancedScheduler = () => {
                   title={
                     isInactive 
                       ? "This employee is inactive" 
-                      : (isPublished ? "Drag to calendar to schedule" : "Publish schedule to enable dragging")
+                      : (!isPublished ? "Drag to calendar to schedule" : "Switch to Draft mode to enable dragging")
                   } 
                   arrow 
                   placement="right"
@@ -718,7 +719,7 @@ const EnhancedScheduler = () => {
                       borderRadius: 2,
                       bgcolor: isInactive ? 'action.disabledBackground' : 'background.paper',
                       cursor: canDrag ? 'grab' : 'not-allowed',
-                      opacity: isInactive ? 0.5 : (isPublished ? 1 : 0.6),
+                      opacity: isInactive ? 0.5 : (!isPublished ? 1 : 0.6),
                       transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                       border: '1px solid',
                       borderColor: isInactive ? 'action.disabled' : 'divider',
@@ -826,21 +827,21 @@ const EnhancedScheduler = () => {
           <ButtonGroup variant="outlined" size="small">
             <Tooltip title="Create Morning Shift (7AM-3PM)">
               <span>
-                <Button onClick={() => applyShiftTemplate('morning')} disabled={!isPublished}>
+                <Button onClick={() => applyShiftTemplate('morning')} disabled={isPublished}>
                   <MorningIcon />
                 </Button>
               </span>
             </Tooltip>
             <Tooltip title="Create Afternoon Shift (3PM-11PM)">
               <span>
-                <Button onClick={() => applyShiftTemplate('afternoon')} disabled={!isPublished}>
+                <Button onClick={() => applyShiftTemplate('afternoon')} disabled={isPublished}>
                   <AfternoonIcon />
                 </Button>
               </span>
             </Tooltip>
             <Tooltip title="Create Night Shift (11PM-7AM)">
               <span>
-                <Button onClick={() => applyShiftTemplate('night')} disabled={!isPublished}>
+                <Button onClick={() => applyShiftTemplate('night')} disabled={isPublished}>
                   <NightIcon />
                 </Button>
               </span>
@@ -880,7 +881,7 @@ const EnhancedScheduler = () => {
                     startIcon={<PasteIcon />}
                     size="small"
                     onClick={handlePasteWeek}
-                    disabled={createShiftMutation.isPending || !isPublished}
+                    disabled={createShiftMutation.isPending || isPublished}
                   >
                     Paste Week
                   </Button>
@@ -919,9 +920,9 @@ const EnhancedScheduler = () => {
             slotMaxTime="22:00:00"
             allDaySlot={false}
             height="100%"
-            editable={isPublished}
-            droppable={isPublished}
-            selectable={isPublished}
+            editable={!isPublished}
+            droppable={!isPublished}
+            selectable={!isPublished}
             selectMirror={true}
             events={calendarEvents}
             eventDrop={handleEventDrop}

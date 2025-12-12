@@ -2,7 +2,7 @@ import { db } from './db';
 import { branches, users, shifts, shiftTrades, payrollPeriods, payrollEntries, approvals, timeOffRequests, notifications, setupStatus, deductionSettings, deductionRates, holidays, archivedPayrollPeriods } from '@shared/schema';
 import type { IStorage } from './storage';
 import type { User, InsertUser, Branch, InsertBranch, Shift, InsertShift, ShiftTrade, InsertShiftTrade, PayrollPeriod, InsertPayrollPeriod, PayrollEntry, InsertPayrollEntry, Approval, InsertApproval, InsertTimeOffRequest, InsertNotification, DeductionSettings, InsertDeductionSettings, DeductionRate, InsertDeductionRate, Holiday, InsertHoliday, ArchivedPayrollPeriod, InsertArchivedPayrollPeriod } from '@shared/schema';
-import { eq, and, gte, lte, desc, sql } from 'drizzle-orm';
+import { eq, and, gte, lte, gt, lt, desc, sql } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import bcrypt from 'bcrypt';
 
@@ -183,8 +183,8 @@ export class DatabaseStorage implements IStorage {
         eq(shifts.userId, userId),
         // Shift overlaps if: new_start < existing_end AND new_end > existing_start
         and(
-          lte(shifts.startTime, endTime),
-          gte(shifts.endTime, startTime)
+          lt(shifts.startTime, endTime),
+          gt(shifts.endTime, startTime)
         )
       )
     );
